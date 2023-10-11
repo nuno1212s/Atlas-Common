@@ -1,4 +1,7 @@
+use std::collections::BTreeSet;
 use std::iter;
+
+pub mod ordered;
 
 /// Utility type for when we want to have a type
 /// which can either be a single item, or a vec of items
@@ -11,7 +14,7 @@ use std::iter;
 pub enum MaybeVec<T> {
     None,
     One(T),
-    Vec(Vec<T>),
+    Mult(Vec<T>),
 }
 
 impl<T> MaybeVec<T> {
@@ -20,7 +23,7 @@ impl<T> MaybeVec<T> {
     }
 
     pub fn from_many(objects: Vec<T>) -> Self {
-        Self::Vec(objects)
+        Self::Mult(objects)
     }
 
     pub fn builder() -> MaybeVecBuilder<T> {
@@ -29,29 +32,17 @@ impl<T> MaybeVec<T> {
 
     pub fn len(&self) -> usize {
         match self {
-            MaybeVec::One(_) => {
-                1
-            }
-            MaybeVec::Vec(vec) => {
-                vec.len()
-            }
-            MaybeVec::None => {
-                0
-            }
+            MaybeVec::One(_) => 1,
+            MaybeVec::Mult(vec) => vec.len(),
+            MaybeVec::None => 0,
         }
     }
 
     pub fn is_empty(&self) -> bool {
         match self {
-            MaybeVec::One(_) => {
-                false
-            }
-            MaybeVec::Vec(vec) => {
-                vec.is_empty()
-            }
-            MaybeVec::None => {
-                true
-            }
+            MaybeVec::One(_) => false,
+            MaybeVec::Mult(vec) => vec.is_empty(),
+            MaybeVec::None => true,
         }
     }
 
@@ -60,7 +51,7 @@ impl<T> MaybeVec<T> {
             MaybeVec::One(one) => {
                 iter::once(one)
             }
-            MaybeVec::Vec(vec) => {
+            MaybeVec::Mult(vec) => {
                 vec.iter()
             }
             MaybeVec::None => {
@@ -74,7 +65,7 @@ impl<T> MaybeVec<T> {
             MaybeVec::One(one) => {
                 iter::once(one)
             }
-            MaybeVec::Vec(vec) => {
+            MaybeVec::Mult(vec) => {
                 vec.iter_mut()
             }
             MaybeVec::None => {
@@ -88,7 +79,7 @@ impl<T> MaybeVec<T> {
             MaybeVec::One(obj) => {
                 iter::once(obj)
             }
-            MaybeVec::Vec(vec) => {
+            MaybeVec::Mult(vec) => {
                 vec.into_iter()
             }
             MaybeVec::None => {
@@ -105,12 +96,52 @@ impl<T> MaybeVec<T> {
             MaybeVec::One(val) => {
                 vec![val]
             }
-            MaybeVec::Vec(vec) => {
+            MaybeVec::Mult(vec) => {
                 vec
             }
         }
     }
+
+    /// Join two maybe vecs
+    pub fn joining(self, other: Self) -> Self {
+        match self {
+            MaybeVec::None => {
+                other
+            }
+            MaybeVec::One(value) => {
+                match other {
+                    MaybeVec::None => {
+                        MaybeVec::One(value)
+                    }
+                    MaybeVec::One(other) => {
+                        MaybeVec::Mult(vec![value, other])
+                    }
+                    MaybeVec::Mult(mut other_vec) => {
+                        other_vec.push(value);
+
+                        MaybeVec::Mult(other_vec)
+                    }
+                }
+            }
+            MaybeVec::Mult(mut vec) => {
+                match other {
+                    MaybeVec::None => {
+                        MaybeVec::Mult(vec)
+                    }
+                    MaybeVec::One(value) => {
+                        vec.push(value)
+                    }
+                    MaybeVec::Mult(mut other) => {
+                        vec.append(&mut other);
+
+                        MaybeVec::Mult(vec)
+                    }
+                }
+            }
+        }
+    }
 }
+
 
 #[derive(Clone, Debug)]
 pub struct MaybeVecBuilder<T> {
@@ -118,15 +149,19 @@ pub struct MaybeVecBuilder<T> {
 }
 
 impl<T> MaybeVecBuilder<T> {
-
     pub fn empty() -> Self {
         Self {
             current_value: MaybeVec::None
         }
     }
 
-    pub fn push(&mut self, value: T) {
+    pub fn from_existing(value: MaybeVec<T>) -> Self {
+        Self {
+            current_value: value
+        }
+    }
 
+    pub fn push(&mut self, value: T) {
         let current = std::mem::replace(&mut self.current_value, MaybeVec::None);
 
         self.current_value = match current {
@@ -134,19 +169,17 @@ impl<T> MaybeVecBuilder<T> {
                 MaybeVec::One(value)
             }
             MaybeVec::One(curr_value) => {
-                MaybeVec::Vec(vec![curr_value, value])
+                MaybeVec::Mult(vec![curr_value, value])
             }
-            MaybeVec::Vec(mut vec) => {
+            MaybeVec::Mult(mut vec) => {
                 vec.push(value);
 
-                MaybeVec::Vec(vec)
+                MaybeVec::Mult(vec)
             }
         };
-
     }
 
     pub fn build(self) -> MaybeVec<T> {
         self.current_value
     }
-
 }
