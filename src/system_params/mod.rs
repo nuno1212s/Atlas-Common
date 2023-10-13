@@ -1,4 +1,4 @@
-use atlas_common::error::*;
+use crate::error::*;
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
 
