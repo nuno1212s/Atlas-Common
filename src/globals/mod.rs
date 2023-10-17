@@ -106,6 +106,10 @@ impl<T> ReadOnly<T> {
         Self { value }
     }
 
+    pub fn into_inner(self) -> T {
+        self.value
+    }
+
 }
 
 impl<T> From<T> for ReadOnly<T> {

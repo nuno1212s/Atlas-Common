@@ -168,6 +168,33 @@ pub fn tbo_pop_message<M>(
 
 /// Takes an internal queue of a `TboQueue` (e.g. the one used in the consensus
 /// module), and queues a message.
+/// This method serves to help with Arc wrapped messages, which don't implement
+/// the underlying traits, so we require the sequence number to be passed alongside
+/// it
+pub fn tbo_queue_message_arc<M>(curr_seq: SeqNo, tbo: &mut VecDeque<VecDeque<M>>, (seq, message): (SeqNo, M)) {
+    let index = match seq.index(curr_seq) {
+        Right(i) => i,
+        Left(_) => {
+            // FIXME: maybe notify peers if we detect a message
+            // with an invalid (too large) seq no? return the
+            // `NodeId` of the offending node.
+            //
+            // NOTE: alternatively, if this seq no pertains to consensus,
+            // we can try running the state transfer protocol
+            return;
+        }
+    };
+
+    if index >= tbo.len() {
+        let len = index - tbo.len() + 1;
+        tbo.extend(std::iter::repeat_with(VecDeque::new).take(len));
+    }
+
+    tbo[index].push_back(message);
+}
+
+/// Takes an internal queue of a `TboQueue` (e.g. the one used in the consensus
+/// module), and queues a message.
 pub fn tbo_queue_message<M: Orderable>(
     curr_seq: SeqNo,
     tbo: &mut VecDeque<VecDeque<M>>,
