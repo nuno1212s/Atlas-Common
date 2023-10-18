@@ -95,6 +95,14 @@ impl<T> Iterator for ItMaybeVec<T> {
     }
 }
 
+impl<T> IntoIterator for MaybeOrderedVec<T> {
+    type Item = T;
+    type IntoIter = ItMaybeVec<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_iter()
+    }
+}
 
 pub enum ItRefMaybeVec<'a, T> {
     None,

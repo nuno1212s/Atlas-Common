@@ -1,5 +1,6 @@
 use std::iter;
 use std::iter::Once;
+use flume::IntoIter;
 
 pub mod ordered;
 
@@ -148,6 +149,15 @@ pub enum ItMaybeVec<T> {
     None,
     One(Once<T>),
     Mult(std::vec::IntoIter<T>),
+}
+
+impl<T> IntoIterator for MaybeVec<T> {
+    type Item = T;
+    type IntoIter = ItMaybeVec<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_iter()
+    }
 }
 
 impl<T> Iterator for ItMaybeVec<T> {
