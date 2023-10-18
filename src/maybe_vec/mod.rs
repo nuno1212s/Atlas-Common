@@ -1,5 +1,5 @@
-use std::collections::BTreeSet;
 use std::iter;
+use std::iter::Once;
 
 pub mod ordered;
 
@@ -46,44 +46,44 @@ impl<T> MaybeVec<T> {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&T> {
+    pub fn iter(&self) -> ItRefMaybeVec<'_, T> {
         match self {
-            MaybeVec::One(one) => {
-                iter::once(one)
+            MaybeVec::None => {
+                ItRefMaybeVec::None
+            }
+            MaybeVec::One(value) => {
+                ItRefMaybeVec::One(iter::once(value))
             }
             MaybeVec::Mult(vec) => {
-                vec.iter()
-            }
-            MaybeVec::None => {
-                iter::empty()
+                ItRefMaybeVec::Mult(vec.iter())
             }
         }
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item=&mut T> {
+    pub fn iter_mut(&mut self) -> ItMutMaybeVec<'_, T> {
         match self {
-            MaybeVec::One(one) => {
-                iter::once(one)
+            MaybeVec::None => {
+                ItMutMaybeVec::None
+            }
+            MaybeVec::One(value) => {
+                ItMutMaybeVec::One(iter::once(value))
             }
             MaybeVec::Mult(vec) => {
-                vec.iter_mut()
-            }
-            MaybeVec::None => {
-                iter::empty()
+                ItMutMaybeVec::Mult(vec.iter_mut())
             }
         }
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item=T> {
+    pub fn into_iter(self) -> ItMaybeVec<T> {
         match self {
             MaybeVec::One(obj) => {
-                iter::once(obj)
+                ItMaybeVec::One(iter::once(obj))
             }
             MaybeVec::Mult(vec) => {
-                vec.into_iter()
+                ItMaybeVec::Mult(vec.into_iter())
             }
             MaybeVec::None => {
-                iter::empty()
+                ItMaybeVec::None
             }
         }
     }
@@ -129,7 +129,9 @@ impl<T> MaybeVec<T> {
                         MaybeVec::Mult(vec)
                     }
                     MaybeVec::One(value) => {
-                        vec.push(value)
+                        vec.push(value);
+
+                        MaybeVec::Mult(vec)
                     }
                     MaybeVec::Mult(mut other) => {
                         vec.append(&mut other);
@@ -142,6 +144,78 @@ impl<T> MaybeVec<T> {
     }
 }
 
+pub enum ItMaybeVec<T> {
+    None,
+    One(Once<T>),
+    Mult(std::vec::IntoIter<T>),
+}
+
+impl<T> Iterator for ItMaybeVec<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ItMaybeVec::None => {
+                None
+            }
+            ItMaybeVec::One(iter) => {
+                iter.next()
+            }
+            ItMaybeVec::Mult(iter) => {
+                iter.next()
+            }
+        }
+    }
+}
+
+
+pub enum ItMutMaybeVec<'a, T> {
+    None,
+    One(Once<&'a mut T>),
+    Mult(std::slice::IterMut<'a, T>)
+}
+
+impl<'a, T> Iterator for ItMutMaybeVec<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ItMutMaybeVec::None => {
+                None
+            }
+            ItMutMaybeVec::One(iter) => {
+                iter.next()
+            }
+            ItMutMaybeVec::Mult(iter) => {
+                iter.next()
+            }
+        }
+    }
+}
+
+pub enum ItRefMaybeVec<'a, T> {
+    None,
+    One(Once<&'a T>),
+    Mult(std::slice::Iter<'a, T>)
+}
+
+impl<'a, T> Iterator for ItRefMaybeVec<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ItRefMaybeVec::None => {
+                None
+            }
+            ItRefMaybeVec::One(iter) => {
+                iter.next()
+            }
+            ItRefMaybeVec::Mult(iter) => {
+                iter.next()
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct MaybeVecBuilder<T> {

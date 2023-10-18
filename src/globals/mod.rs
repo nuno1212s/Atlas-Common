@@ -4,6 +4,7 @@ use std::{sync::atomic::{AtomicBool, Ordering}, ops::Deref};
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
+use crate::ordering::{Orderable, SeqNo};
 
 /// A `Flag` is used to check for the initialization of a global value.
 pub struct Flag(AtomicBool);
@@ -91,12 +92,22 @@ pub struct ReadOnly<T> {
 
 }
 
+impl<T> Orderable for ReadOnly<T> where T: Orderable {
+    fn sequence_number(&self) -> SeqNo {
+        self.value.sequence_number()
+    }
+}
+
 unsafe impl<T> Sync for ReadOnly<T> {}
 
 impl<T> ReadOnly<T> {
 
     pub fn new(value: T) -> Self {
         Self { value }
+    }
+
+    pub fn into_inner(self) -> T {
+        self.value
     }
 
 }
