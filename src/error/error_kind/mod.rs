@@ -47,6 +47,8 @@ pub enum ErrorKind {
     CommunicationSocketStdTcp,
     CommunicationIncomingPeerHandling,
     CommunicationMessage,
+    OrderProtocol,
+    OrderProtocolProof,
     OrderProtocolDecision,
     Ordering,
     AsyncRuntime,
