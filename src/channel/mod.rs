@@ -149,6 +149,7 @@ pub struct ChannelSyncRx<T> {
 }
 
 pub struct ChannelSyncTx<T> {
+    channel_identifier: Option<String>,
     #[cfg(feature = "channel_sync_crossbeam")]
     inner: crossbeam::ChannelSyncTx<T>,
     #[cfg(feature = "channel_sync_flume")]
@@ -192,7 +193,7 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     TrySendError::Full(value) => {
-                        error!("Failed to insert into channel. Channel is full and could not directly insert, blocking");
+                        error!("Failed to insert into channel. Channel is full and could not directly insert, blocking. {:?}", self.channel_identifier);
 
                         value
                     }
@@ -225,6 +226,7 @@ impl<T> ChannelSyncTx<T> {
 impl<T> Clone for ChannelSyncTx<T> {
     fn clone(&self) -> Self {
         ChannelSyncTx {
+            channel_identifier: self.channel_identifier.clone(),
             inner: self.inner.clone()
         }
     }
@@ -239,36 +241,43 @@ impl<T> Clone for ChannelSyncRx<T> {
 }
 
 #[inline]
-pub fn new_bounded_sync<T>(bound: usize) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+pub fn new_bounded_sync<T>(bound: usize, name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+
+    let name = name.map(|string|  String::from(string));
+
     #[cfg(feature = "channel_sync_crossbeam")]
     {
         let (tx, rx) = crossbeam::new_bounded(bound);
 
-        (ChannelSyncTx { inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
     }
 
     #[cfg(feature = "channel_sync_flume")]
     {
         let (tx, rx) = flume_mpmc::new_bounded(bound);
 
-        (ChannelSyncTx { inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
     }
 }
 
+
 #[inline]
-pub fn new_unbounded_sync<T>() -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+
+    let name = name.map(|string| String::from(string));
+
     #[cfg(feature = "channel_sync_crossbeam")]
     {
         let (tx, rx) = crossbeam::new_unbounded();
 
-        (ChannelSyncTx { inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
     }
 
     #[cfg(feature = "channel_sync_flume")]
     {
         let (tx, rx) = flume_mpmc::new_unbounded();
 
-        (ChannelSyncTx { inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
     }
 }
 
