@@ -16,13 +16,8 @@ use rio::{Uring, Completion};
 use futures::io::{AsyncRead, AsyncWrite};
 use socket2::{Protocol, Socket as SSocket, Domain, Type};
 
-use crate::bft::globals::Global;
-use crate::bft::error::{
-    self,
-    ErrorKind,
-    ResultWrappedExt,
-    ResultSimpleExt,
-};
+use crate::globals::Global;
+use crate::error::*;
 
 // the same type used by rio 0.9
 struct Rio(Arc<Uring>);
@@ -35,9 +30,8 @@ static mut RIO: Global<Uring> = Global::new();
 const ORD: rio::Ordering = rio::Ordering::Link;
 
 // initialize the global `Uring` instance
-pub unsafe fn init() -> error::Result<()> {
-    let ring = rio::new()
-        .wrapped(ErrorKind::CommunicationSocketRioTcp)?;
+pub unsafe fn init() -> Result<()> {
+    let ring = rio::new()?;
     let ring = {
         // remove `Arc` wrapping because direct access to
         // the `Uring` is faster than going through another
@@ -52,7 +46,7 @@ pub unsafe fn init() -> error::Result<()> {
 }
 
 // drop the global `Uring` instance
-pub unsafe fn drop() -> error::Result<()> {
+pub unsafe fn drop() -> Result<()> {
     RIO.drop();
     Ok(())
 }
@@ -69,12 +63,13 @@ pub struct Listener {
 
 // bind won't actually be asynchronous, but we'll only call it once
 // throughout the library, anyway
-pub async fn bind<A: Into<SocketAddr>>(addr: A) -> io::Result<Listener> {
+pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
     TcpListener::bind(addr.into())
         .map(|inner| Listener { inner })
+        .into()
 }
 
-pub async fn connect<A: Into<SocketAddr>>(addr: A) -> io::Result<Socket> {
+pub async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
     let addr = addr.into();
     let domain = match addr {
         SocketAddr::V4(_) => Domain::IPV4,
@@ -89,19 +84,20 @@ pub async fn connect<A: Into<SocketAddr>>(addr: A) -> io::Result<Socket> {
 }
 
 impl Listener {
-    pub async fn accept(&self) -> io::Result<Socket> {
+    pub async fn accept(&self) -> Result<Socket> {
         ring()
             .accept(&self.inner)
             .await
             .map(|inner| Socket { inner, reading: None, writing: None })
+            .into()
     }
 }
 
 impl AsyncRead for Socket {
     fn poll_read(
         self: Pin<&mut Self>, 
-        cx: &mut Context<'_>, 
-        buf: &mut [u8]
+        cx: &mut Context<'_>,
+        mut buf: &mut [u8]
     ) -> Poll<io::Result<usize>>
     {
         let this = &mut *self;

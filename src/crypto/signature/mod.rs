@@ -3,11 +3,22 @@
 use std::fmt::{Debug, Formatter};
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
+use thiserror::Error;
 
 use crate::error::*;
 
 #[cfg(feature = "crypto_signature_ring_ed25519")]
 mod ring_ed25519;
+
+#[derive(Error, Debug)]
+pub enum SignError {
+    #[error("Invalid signature")]
+    InvalidSignature,
+    #[error("Invalid public key, length is wrong {0}")]
+    PublicKeyLen(usize),
+    #[error("Invalid signature, length is wrong {0}")]
+    SignatureLen(usize),
+}
 
 /// A `KeyPair` holds both the private and public key components
 /// that form a digital identity.

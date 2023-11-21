@@ -7,6 +7,8 @@ use flume::RecvTimeoutError;
 
 use futures::future::FusedFuture;
 use crate::channel::{RecvError, SendError, TryRecvError};
+use crate::error::*;
+use crate::Err;
 
 /**
 Mixed channels
@@ -50,37 +52,37 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> Result<(), SendError<T>> {
+    pub async fn send(&self, message: T) -> Result<()> {
         match self.inner.send_async(message).await {
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError(err.into_inner()))
+                Err!(SendError::from(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_sync(&self, message: T) ->Result<(), SendError<T>> {
+    pub fn send_sync(&self, message: T) ->Result<()> {
         match self.inner.send(message) {
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError(err.into_inner()))
+                Err!(SendError::from(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_timeout(&self, message: T, timeout: Duration) -> Result<(), SendError<T>> {
+    pub fn send_timeout(&self, message: T, timeout: Duration) -> Result<()> {
         match self.inner.send_timeout(message, timeout){
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError(err.into_inner()))
+                Err!(SendError::from(err.into_inner()))
             }
         }
     }
@@ -104,19 +106,19 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn recv_sync(&self) -> Result<T, RecvError> {
+    pub fn recv_sync(&self) -> Result<T> {
         match self.inner.recv() {
             Ok(elem) => {
                 Ok(elem)
             }
             Err(_) => {
-                Err(RecvError::ChannelDc)
+                Err!(RecvError::ChannelDc)
             }
         }
     }
 
     #[inline]
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, TryRecvError> {
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<T> {
         match self.inner.recv_timeout(timeout) {
             Ok(elem) => {
                 Ok(elem)
@@ -124,10 +126,10 @@ impl<T> ChannelMixedRx<T> {
             Err(err) => {
                 match err {
                     RecvTimeoutError::Timeout => {
-                        Err(TryRecvError::Timeout)
+                        Err!(TryRecvError::Timeout)
                     }
                     RecvTimeoutError::Disconnected => {
-                        Err(TryRecvError::ChannelDc)
+                        Err!(TryRecvError::ChannelDc)
                     }
                 }
             }
@@ -135,7 +137,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn try_recv(&self) -> Result<T, TryRecvError> {
+    pub fn try_recv(&self) -> Result<T> {
         match self.inner.try_recv() {
             Ok(ele) => {
                 Ok(ele)
@@ -143,10 +145,10 @@ impl<T> ChannelMixedRx<T> {
             Err(err) => {
                 match err {
                     flume::TryRecvError::Empty => {
-                        Err(TryRecvError::ChannelEmpty)
+                        Err!(TryRecvError::ChannelEmpty)
                     }
                     flume::TryRecvError::Disconnected => {
-                        Err(TryRecvError::ChannelDc)
+                        Err!(TryRecvError::ChannelDc)
                     }
                 }
             }
@@ -155,10 +157,10 @@ impl<T> ChannelMixedRx<T> {
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
-    type Output = Result<T, RecvError>;
+    type Output = Result<T>;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, RecvError>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T>> {
         Pin::new(&mut self.inner)
             .poll(cx)
             .map(|r| match r {
@@ -166,7 +168,7 @@ impl<'a, T> Future for ChannelRxFut<'a, T> {
                     Ok(res)
                 }
                 Err(_) => {
-                    Err(RecvError::ChannelDc)
+                    Err!(RecvError::ChannelDc)
                 }
             })
     }

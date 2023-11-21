@@ -9,8 +9,6 @@ mod cthpool;
 #[cfg(feature = "threadpool_rayon")]
 mod rayon;
 
-
-
 use crate::globals::Global;
 use crate::error::*;
 

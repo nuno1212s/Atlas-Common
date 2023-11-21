@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use futures::future::FusedFuture;
 use log::error;
+use thiserror::Error;
+use crate::error::*;
 
 
 #[cfg(feature = "channel_futures_mpsc")]
@@ -88,7 +90,7 @@ impl<T> ChannelAsyncTx<T> {
 
     //Asynchronously send message through channel
     #[inline]
-    pub async fn send(&mut self, message: T) -> Result<(), SendError<T>> {
+    pub async fn send(&mut self, message: T) -> Result<()> {
         self.inner.send(message).await
     }
 }
@@ -103,10 +105,10 @@ impl<T> ChannelAsyncRx<T> {
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
-    type Output = Result<T, RecvError>;
+    type Output = Result<T>;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, RecvError>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T>> {
         Pin::new(&mut self.inner).poll(cx)
     }
 }
@@ -163,17 +165,17 @@ impl<T> ChannelSyncRx<T> {
     }
 
     #[inline]
-    pub fn try_recv(&self) -> Result<T, TryRecvError> {
+    pub fn try_recv(&self) -> std::result::Result<T, TryRecvError> {
         self.inner.try_recv()
     }
 
     #[inline]
-    pub fn recv(&self) -> Result<T, RecvError> {
+    pub fn recv(&self) -> Result<T> {
         self.inner.recv()
     }
 
     #[inline]
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, TryRecvError> {
+    pub fn recv_timeout(&self, timeout: Duration) -> std::result::Result<T, TryRecvError> {
         self.inner.recv_timeout(timeout)
     }
 }
@@ -185,7 +187,7 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> Result<()> {
         let value = match self.inner.try_send(value) {
             Ok(_) => {
                 return Ok(())
@@ -213,12 +215,12 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<(), TrySendError<T>> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<()> {
         self.inner.send_timeout(value, timeout)
     }
 
     #[inline]
-    pub fn try_send(&self, value: T) -> Result<(), TrySendError<T>> {
+    pub fn try_send(&self, value: T) -> Result<()> {
         self.inner.try_send(value)
     }
 }
@@ -301,7 +303,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn recv(&self) -> Result<T, RecvError> {
+    pub fn recv(&self) -> Result<T> {
         match self.inner.recv_sync() {
             Ok(res) => {
                 Ok(res)
@@ -313,7 +315,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvError> {
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<T> {
         match self.inner.recv_timeout(timeout) {
             Ok(result) => {
                 Ok(result)
@@ -325,7 +327,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub async fn recv_async(&mut self) -> Result<T, RecvError> {
+    pub async fn recv_async(&mut self) -> Result<T> {
         match self.inner.recv().await {
             Ok(val) => {
                 Ok(val)
@@ -337,7 +339,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn try_recv(&self) -> Result<T, TryRecvError> {
+    pub fn try_recv(&self) -> Result<T> {
         self.inner.try_recv()
     }
 }
@@ -349,17 +351,17 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> Result<(), SendError<T>> {
+    pub async fn send_async(&self, value: T) -> Result<()> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> Result<()> {
         self.inner.send_sync(value)
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<(), SendError<T>> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<()> {
         self.inner.send_timeout(value, timeout)
     }
 }
@@ -417,12 +419,12 @@ impl<T> ChannelMultTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> Result<(), SendError<T>> {
+    pub async fn send_async(&self, value: T) -> Result<()> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> Result<()> {
         self.inner.send_blk(value)
     }
 }
@@ -433,15 +435,15 @@ impl<T> ChannelMultRx<T> {
         self.inner.is_dc()
     }
 
-    pub async fn recv_mult(&mut self) -> Result<Vec<T>, RecvMultError> {
+    pub async fn recv_mult(&mut self) -> Result<Vec<T>> {
         self.inner.recv().await
     }
 
-    pub fn recv_mult_sync(&self, dest: &mut Vec<T>) -> Result<usize, RecvMultError> {
+    pub fn recv_mult_sync(&self, dest: &mut Vec<T>) -> Result<usize> {
         self.inner.recv_sync(dest)
     }
 
-    pub fn try_recv_mult(&self, dest: &mut Vec<T>, rq_bound: usize) -> Result<usize, RecvMultError> {
+    pub fn try_recv_mult(&self, dest: &mut Vec<T>, rq_bound: usize) -> Result<usize> {
         self.inner.try_recv_mult(dest, rq_bound)
     }
 }
@@ -487,96 +489,43 @@ pub fn new_oneshot_channel<T>() -> (OneShotTx<T>, OneShotRx<T>) {
 Errors
  **/
 
+#[derive(Error, Debug)]
 pub enum RecvMultError {
+    #[error("Failed receive, channel is disconnected")]
     ChannelDc,
+    #[error("The input vec to place received messages is malformed")]
     MalformedInputVec,
+    #[error("Unsupported operation")]
     Unsupported,
 }
 
-impl Debug for RecvMultError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to recv message")
-    }
-}
-
-impl Display for RecvMultError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(self, f)
-    }
-}
-
-impl std::error::Error for RecvMultError {}
-
+#[derive(Error, Debug)]
 pub enum TryRecvError {
+    #[error("Channel has disconnected")]
     ChannelDc,
+    #[error("Channel is empty")]
     ChannelEmpty,
+    #[error("Receive operation timed out")]
     Timeout,
 }
 
-impl Debug for TryRecvError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to recv message")
-    }
-}
-
-impl Display for TryRecvError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(self, f)
-    }
-}
-
-impl std::error::Error for TryRecvError {}
-
+#[derive(Error, Debug)]
 pub enum RecvError {
+    #[error("Channel has disconnected")]
     ChannelDc,
 }
 
-impl Debug for RecvError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to recv message, channel disconnected")
-    }
-}
-
-impl Display for RecvError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(self, f)
-    }
-}
-
-impl std::error::Error for RecvError {}
-
-pub struct SendError<T>(T);
-
-impl<T> Debug for SendError<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to send message")
-    }
-}
-
-impl<T> Display for SendError<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(self, f)
-    }
-}
-
-impl<T> std::error::Error for SendError<T> {}
-
+#[derive(Error, Debug)]
 pub enum TrySendError<T> {
+    #[error("Channel has disconnected")]
     Disconnected(T),
+    #[error("Send operation has timed out")]
     Timeout(T),
+    #[error("Channel is full")]
     Full(T)
 }
 
-impl<T> Debug for TrySendError<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to send message")
-    }
+#[derive(Error, Debug)]
+pub enum SendError<T> {
+    FailedToSend(#[from] T)
 }
-
-impl<T> Display for TrySendError<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(self, f)
-    }
-}
-
-impl<T> std::error::Error for TrySendError<T> {}

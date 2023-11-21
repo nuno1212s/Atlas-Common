@@ -2,6 +2,8 @@ use blake3::OUT_LEN;
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
+use crate::Err;
+use crate::crypto::hash::HashError;
 
 use crate::error::*;
 
@@ -35,9 +37,9 @@ impl Digest {
 
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         if raw_bytes.len() < Self::LENGTH {
-            return Err("Digest has an invalid length")
-                .wrapped(ErrorKind::CryptoHashBlake3Blake3);
+            return Err!(HashError::DigestLen(raw_bytes.len()));
         }
+        
         Ok(Self::from_bytes_unchecked(raw_bytes))
     }
 

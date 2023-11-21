@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use crate::error::*;
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
@@ -16,8 +17,7 @@ impl SystemParams {
     /// Creates a new instance of `SystemParams`.
     pub fn new(n: usize, f: usize) -> Result<Self> {
         if n < 3 * f + 1 {
-            return Err("Invalid params: n < 3f + 1")
-                .wrapped(ErrorKind::Core);
+            return Err(anyhow!("Invalid params: n < 3f + 1"))
         }
 
         Ok(SystemParams { n, f })

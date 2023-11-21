@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
+use anyhow::Context;
 use crate::error::*;
 
 pub type JoinHandle<T> = ::tokio::task::JoinHandle<T>;
@@ -19,8 +20,7 @@ pub fn init(num_threads: usize) -> Result<Runtime> {
             format!("Atlas-IO-Worker-{}", id)
         })
         .enable_all()
-        .build()
-        .wrapped_msg(ErrorKind::AsyncRuntimeTokio, "Failed to build tokio runtime")?;
+        .build().context( "Failed to build tokio runtime")?;
 
     let handle = result.handle();
 

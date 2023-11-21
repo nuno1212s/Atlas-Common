@@ -9,6 +9,8 @@ use dsrust::queues::mqueue::MQueue;
 
 use futures::future::FusedFuture;
 use crate::channel::{RecvError, RecvMultError, SendError};
+use crate::error::*;
+use crate::Err;
 
 #[cfg(feature = "channel_custom_dump_lfb")]
 type QueueType<T> = LFBQueue<T>;
@@ -56,18 +58,18 @@ impl<T> ChannelTx<T> where {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> Result<(), SendError<T>> {
+    pub async fn send(&self, message: T) -> Result<()> {
         match self.inner.send_async(message).await {
             Ok(_) => { Ok(()) }
-            Err(err) => { Err(SendError(err.0)) }
+            Err(err) => { Err!(SendError::from(err.0)) }
         }
     }
 
     #[inline]
-    pub fn send_blk(&self, message: T) -> Result<(), SendError<T>> {
+    pub fn send_blk(&self, message: T) -> Result<()> {
         match self.inner.send(message) {
             Ok(_) => { Ok(()) }
-            Err(err) => { Err(SendError(err.0)) }
+            Err(err) => { Err!(SendError::from(err.0)) }
         }
     }
 }
@@ -102,7 +104,7 @@ impl<T> ChannelRxMult<T> {
     }
 
     #[inline]
-    pub fn recv_sync(&self, dest: &mut Vec<T>) -> Result<usize, RecvMultError> {
+    pub fn recv_sync(&self, dest: &mut Vec<T>) -> Result<usize> {
         match self.inner.recv_mult(dest) {
             Ok(recv) => {
                 Ok(recv)
@@ -110,13 +112,13 @@ impl<T> ChannelRxMult<T> {
             Err(err) => {
                 match err {
                     dsrust::channels::queue_channel::RecvMultError::MalformedInputVec => {
-                        Err(RecvMultError::MalformedInputVec)
+                        Err!(RecvMultError::MalformedInputVec)
                     }
                     dsrust::channels::queue_channel::RecvMultError::Disconnected => {
-                        Err(RecvMultError::ChannelDc)
+                        Err!(RecvMultError::ChannelDc)
                     }
                     dsrust::channels::queue_channel::RecvMultError::UnimplementedOperation => {
-                        Err(RecvMultError::Unsupported)
+                        Err!(RecvMultError::Unsupported)
                     }
                 }
             }
@@ -124,7 +126,7 @@ impl<T> ChannelRxMult<T> {
     }
 
     #[inline]
-    pub fn try_recv_mult(&self, dest: &mut Vec<T>, _bound: usize) -> Result<usize, RecvMultError> {
+    pub fn try_recv_mult(&self, dest: &mut Vec<T>, _bound: usize) -> Result<usize> {
         match self.inner.try_recv_mult(dest) {
             Ok(recved) => {
                 Ok(recved)
@@ -132,13 +134,13 @@ impl<T> ChannelRxMult<T> {
             Err(err) => {
                 match err {
                     dsrust::channels::queue_channel::RecvMultError::MalformedInputVec => {
-                        Err(RecvMultError::MalformedInputVec)
+                        Err!(RecvMultError::MalformedInputVec)
                     }
                     dsrust::channels::queue_channel::RecvMultError::Disconnected => {
-                        Err(RecvMultError::ChannelDc)
+                        Err!(RecvMultError::ChannelDc)
                     }
                     dsrust::channels::queue_channel::RecvMultError::UnimplementedOperation => {
-                        Err(RecvMultError::Unsupported)
+                        Err!(RecvMultError::Unsupported)
                     }
                 }
             }
@@ -171,7 +173,7 @@ impl<T> Clone for ChannelRxMult<T> {
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
-    type Output = Result<T, RecvError>;
+    type Output = Result<T>;
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -182,7 +184,7 @@ impl<'a, T> Future for ChannelRxFut<'a, T> {
                     Ok(rec)
                 }
                 Err(_) => {
-                    Err(RecvError::ChannelDc)
+                    Err!(RecvError::ChannelDc)
                 }
             })
     }
@@ -196,7 +198,7 @@ impl<'a, T> FusedFuture for ChannelRxFut<'a, T> {
 
 ///Receiver to use with the dump method
 impl<'a, T> Future for ChannelRxMultFut<'a, T> {
-    type Output = Result<Vec<T>, RecvMultError>;
+    type Output = Result<Vec<T>>;
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -209,13 +211,13 @@ impl<'a, T> Future for ChannelRxMultFut<'a, T> {
                 Err(err) => {
                     match err {
                         dsrust::channels::queue_channel::RecvMultError::MalformedInputVec => {
-                            Err(RecvMultError::MalformedInputVec)
+                            Err!(RecvMultError::MalformedInputVec)
                         }
                         dsrust::channels::queue_channel::RecvMultError::Disconnected => {
-                            Err(RecvMultError::ChannelDc)
+                            Err!(RecvMultError::ChannelDc)
                         }
                         dsrust::channels::queue_channel::RecvMultError::UnimplementedOperation => {
-                            Err(RecvMultError::Unsupported)
+                            Err!(RecvMultError::Unsupported)
                         }
                     }
                 }

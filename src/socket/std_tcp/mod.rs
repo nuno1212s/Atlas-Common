@@ -2,7 +2,9 @@ use std::io;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
+use anyhow::Context;
 use crate::socket::{MioListener, MioSocket};
+use crate::error::*;
 
 pub struct Socket {
     inner: TcpStream,
@@ -12,14 +14,16 @@ pub struct Listener {
     inner: TcpListener,
 }
 
-pub fn bind<A: Into<SocketAddr>>(addr: A) -> io::Result<Listener> {
+pub fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
     TcpListener::bind(addr.into())
         .map(Listener::new)
+        .into()
 }
 
-pub fn connect<A: Into<SocketAddr>>(addr: A) -> io::Result<Socket> {
+pub fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
     TcpStream::connect(addr.into())
         .map(|s| { Socket::new(s) })
+        .into()
 }
 
 impl Listener {
@@ -27,10 +31,11 @@ impl Listener {
         Listener { inner }
     }
 
-    pub fn accept(&self) -> io::Result<Socket> {
+    pub fn accept(&self) -> Result<Socket> {
         self.inner
             .accept()
             .map(|(s, _)| Socket::new(s))
+            .into()
     }
 }
 

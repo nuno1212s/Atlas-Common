@@ -6,6 +6,7 @@ use std::task::{Poll, Context};
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite};
 
 use async_std::net::{TcpListener, TcpStream};
+use crate::error::*;
 
 pub struct Listener {
     inner: TcpListener,
@@ -15,15 +16,16 @@ pub struct Socket {
     inner: TcpStream,
 }
 
-pub async fn bind<A: Into<SocketAddr>>(addr: A) -> io::Result<Listener> {
+pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
     let inner = TcpListener::bind(addr.into()).await?;
     Ok(Listener { inner })
 }
 
-pub async fn connect<A: Into<SocketAddr>>(addr: A) -> io::Result<Socket> {
+pub async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
     TcpStream::connect(addr.into())
         .await
         .map(|inner| Socket { inner })
+        .into()
 }
 
 impl AsyncRead for Socket {
@@ -65,11 +67,12 @@ impl AsyncWrite for Socket {
 }
 
 impl Listener {
-    pub async fn accept(&self) -> io::Result<Socket> {
+    pub async fn accept(&self) -> Result<Socket> {
         self.inner
             .accept()
             .await
             .map(|(inner, _)| Socket { inner })
+            .into()
     }
 }
 

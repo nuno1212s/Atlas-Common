@@ -1,3 +1,4 @@
+use anyhow::Context;
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
 
@@ -9,6 +10,8 @@ use ring::{
     signature::KeyPair as RKeyPair,
     signature::ED25519_PUBLIC_KEY_LEN,
 };
+use crate::crypto::signature::SignError;
+use crate::Err;
 
 use crate::error::*;
 
@@ -35,7 +38,7 @@ pub struct Signature(
 impl KeyPair {
     pub fn from_bytes(seed_bytes: &[u8]) -> Result<(Self, Vec<u8>)> {
         let sk = rsig::Ed25519KeyPair::from_seed_unchecked(seed_bytes)
-            .simple_msg(ErrorKind::CryptoSignatureRingEd25519, "Invalid seed for ed25519 key")?;
+            .context("Invalid seed for ed25519 key")?;
         let pk = sk.public_key().clone();
         let pk_bytes = pk.as_ref();
 
@@ -57,9 +60,9 @@ impl KeyPair {
 impl PublicKey {
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         if raw_bytes.len() < ED25519_PUBLIC_KEY_LEN {
-            return Err("Public key has an invalid length")
-                .wrapped(ErrorKind::CryptoSignatureRingEd25519);
+            return Err!(SignError::PublicKeyLen(raw_bytes.len()));
         }
+
         Ok(Self::from_bytes_unchecked(raw_bytes))
     }
 
@@ -76,8 +79,7 @@ impl PublicKey {
     }
 
     pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
-        self.pk.verify(message, signature.as_ref())
-            .simple_msg(ErrorKind::CryptoSignatureRingEd25519, "Invalid signature")
+        self.pk.verify(message, signature.as_ref()).context("Invalid signature")
     }
 }
 
@@ -86,9 +88,9 @@ impl Signature {
 
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         if raw_bytes.len() < Self::LENGTH {
-            return Err("Signature has an invalid length")
-                .wrapped(ErrorKind::CryptoSignatureRingEd25519);
+            return Err!(SignError::SignatureLen(raw_bytes.len()));
         }
+        
         Ok(Self::from_bytes_unchecked(raw_bytes))
     }
 

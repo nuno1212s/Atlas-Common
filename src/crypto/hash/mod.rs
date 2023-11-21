@@ -1,9 +1,11 @@
 //! Abstractions over different crypto hash digest algorithms.
 
 use std::fmt::{Debug, Formatter};
+use log::error;
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::error::*;
 
@@ -41,10 +43,10 @@ impl Context {
     pub fn new() -> Self {
         let inner = {
             #[cfg(feature = "crypto_hash_ring_sha2")]
-                { ring_sha2::Context::new() }
+            { ring_sha2::Context::new() }
 
             #[cfg(feature = "crypto_hash_blake3_blake3")]
-                { blake3_blake3::Context::new() }
+            { blake3_blake3::Context::new() }
         };
         Context { inner }
     }
@@ -62,30 +64,29 @@ impl Context {
 }
 
 impl Digest {
-    
-    const BLANK_DIGEST : [u8; Self::LENGTH] = [0; Self::LENGTH];
-    
+    const BLANK_DIGEST: [u8; Self::LENGTH] = [0; Self::LENGTH];
+
     /// The length of the `Digest` in bytes.
     pub const LENGTH: usize = {
         #[cfg(feature = "crypto_hash_ring_sha2")]
-            { ring_sha2::Digest::LENGTH }
+        { ring_sha2::Digest::LENGTH }
 
         #[cfg(feature = "crypto_hash_blake3_blake3")]
-            { blake3_blake3::Digest::LENGTH }
+        { blake3_blake3::Digest::LENGTH }
     };
 
     /// Constructs a `Digest` from a byte buffer of appropriate size.
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         let inner = {
             #[cfg(feature = "crypto_hash_ring_sha2")]
-                { ring_sha2::Digest::from_bytes(raw_bytes) }
+            { ring_sha2::Digest::from_bytes(raw_bytes) }
 
             #[cfg(feature = "crypto_hash_blake3_blake3")]
-                { blake3_blake3::Digest::from_bytes(raw_bytes) }
+            { blake3_blake3::Digest::from_bytes(raw_bytes) }
         }?;
         Ok(Digest { inner })
     }
-    
+
     pub fn blank() -> Self {
         Digest::from_bytes(&Self::BLANK_DIGEST).unwrap()
     }
@@ -109,6 +110,12 @@ impl Debug for Digest {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:x?}", self.inner.as_ref().chunks(4).next().unwrap())
     }
+}
+
+#[derive(Error, Debug)]
+pub enum HashError {
+    #[error("Hash has an invalid length {0}")]
+    DigestLengthErr(usize),
 }
 
 #[cfg(test)]

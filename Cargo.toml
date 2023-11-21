@@ -84,6 +84,9 @@ persistent_db_disabled = []
 serialize_serde = ["serde", "serde-big-array"]
 
 [dependencies]
+anyhow = "1.0.75"
+thiserror = "1.0.50"
+
 either = "1.8.1"
 tokio-rustls = "0.24.0"
 rustls = "0.21.0"
@@ -129,6 +132,5 @@ log = "0.4.17"
 #tracing = "0.1.32"
 #tracing-subscriber = { version = "0.3.11", features = ["fmt"] }
 
-thiserror = "1.0.32"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"

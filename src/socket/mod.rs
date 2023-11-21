@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::{Context, Poll};
+use anyhow::Context;
 
 use either::Either;
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite};
@@ -20,7 +21,7 @@ use rustls::{ClientConnection, Error, IoState, ServerConnection, StreamOwned};
 use tokio_rustls::TlsStream;
 use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt, FuturesAsyncReadCompatExt};
 
-use crate::error;
+use crate::error::*;
 
 #[cfg(feature = "socket_tokio_tcp")]
 mod tokio_tcp;
@@ -168,7 +169,7 @@ impl DerefMut for MioSocket {
 }
 
 /// Initialize the sockets module.
-pub unsafe fn init() -> error::Result<()> {
+pub unsafe fn init() -> Result<()> {
     #[cfg(feature = "socket_rio_tcp")]
     { rio_tcp::init()?; }
 
@@ -176,7 +177,7 @@ pub unsafe fn init() -> error::Result<()> {
 }
 
 /// Drops the global data associated with sockets.
-pub unsafe fn drop() -> error::Result<()> {
+pub unsafe fn drop() -> Result<()> {
     #[cfg(feature = "socket_rio_tcp")]
     { rio_tcp::drop()?; }
 
@@ -184,7 +185,7 @@ pub unsafe fn drop() -> error::Result<()> {
 }
 
 /// Creates a new `Listener` socket, bound to the address `addr`.
-pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> io::Result<AsyncListener> {
+pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncListener> {
     {
         #[cfg(feature = "socket_tokio_tcp")]
         { tokio_tcp::bind(addr).await }
@@ -194,15 +195,19 @@ pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> io::Result<Async
 
         #[cfg(feature = "socket_rio_tcp")]
         { rio_tcp::bind(addr).await }
-    }.and_then(|inner| set_listener_options(AsyncListener { inner }))
+    }
+        .and_then(|inner| set_listener_options(AsyncListener { inner }))
+        .context("Failed to bind async server")
 }
 
-pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> io::Result<SyncListener> {
-    { std_tcp::bind(addr) }.and_then(|inner| set_listener_options_replica(SyncListener { inner }))
+pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener> {
+    { std_tcp::bind(addr) }
+        .and_then(|inner| set_listener_options_replica(SyncListener { inner }))
+        .context("Failed to bind sync server")
 }
 
 /// Connects to the remote node pointed to by the address `addr`.
-pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> io::Result<AsyncSocket> {
+pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> Result<AsyncSocket> {
     {
         #[cfg(feature = "socket_tokio_tcp")]
         { tokio_tcp::connect(addr).await }
@@ -215,13 +220,13 @@ pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> io::Result<AsyncSock
     }.and_then(|inner| set_sockstream_options(AsyncSocket { inner }))
 }
 
-pub fn connect_sync<A: Into<SocketAddr>>(addr: A) -> io::Result<SyncSocket> {
+pub fn connect_sync<A: Into<SocketAddr>>(addr: A) -> Result<SyncSocket> {
     { std_tcp::connect(addr) }
         .and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
 }
 
 impl AsyncListener {
-    pub async fn accept(&self) -> io::Result<AsyncSocket> {
+    pub async fn accept(&self) -> Result<AsyncSocket> {
         self.inner.accept()
             .await
             .and_then(|inner| set_sockstream_options(AsyncSocket { inner }))
@@ -229,7 +234,7 @@ impl AsyncListener {
 }
 
 impl SyncListener {
-    pub fn accept(&self) -> io::Result<SyncSocket> {
+    pub fn accept(&self) -> Result<SyncSocket> {
         self.inner.accept()
             .and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
     }

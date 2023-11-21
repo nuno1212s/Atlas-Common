@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::sync::Arc;
+use thiserror::Error;
 
 use crate::error::*;
 
@@ -144,4 +145,10 @@ impl KVDB {
     {
         self.inner.iter_range(prefix, start, end)
     }
+}
+
+#[derive(Error, Debug)]
+pub enum PersStorage {
+    #[error("Failed to get prefix by that name {0}")]
+    NoPrefix(&'static str),
 }

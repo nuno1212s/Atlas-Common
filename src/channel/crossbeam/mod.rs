@@ -1,7 +1,9 @@
 use std::ops::Deref;
 use std::time::Duration;
+use crate::error::*;
 use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
 use crate::channel::{RecvError, SendError, TryRecvError, TrySendError};
+use crate::Err;
 
 pub struct ChannelSyncRx<T> {
     inner: crossbeam_channel::Receiver<T>,
@@ -29,17 +31,17 @@ impl<T> Clone for ChannelSyncRx<T> {
 
 impl<T> ChannelSyncTx<T> {
     #[inline]
-    pub fn send(&self, value: T) -> Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> Result<()> {
         match self.inner.send(value) {
             Ok(_) => { Ok(()) }
             Err(err) => {
-                Err(SendError(err.into_inner()))
+                Err!(SendError::from(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<(), TrySendError<T>> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendError<T>> {
         match self.inner.send_timeout(value, timeout) {
             Ok(_) => {
                 Ok(())
@@ -47,10 +49,10 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     SendTimeoutError::Timeout(t) => {
-                        Err(TrySendError::Timeout(t))
+                        Err!(TrySendError::Timeout(t))
                     }
                     SendTimeoutError::Disconnected(t) => {
-                        Err(TrySendError::Disconnected(t))
+                        Err!(TrySendError::Disconnected(t))
                     }
                 }
             }
@@ -58,7 +60,7 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn try_send(&self, value: T) -> Result<(), TrySendError<T>> {
+    pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendError<T>> {
         match self.inner.try_send(value) {
             Ok(_) => {
                 Ok(())
@@ -66,10 +68,10 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     crossbeam_channel::TrySendError::Full(value) => {
-                        Err(TrySendError::Full(value))
+                        Err!(TrySendError::Full(value))
                     }
                     crossbeam_channel::TrySendError::Disconnected(value) => {
-                        Err(TrySendError::Disconnected(value))
+                        Err!(TrySendError::Disconnected(value))
                     }
                 }
             }
@@ -79,7 +81,7 @@ impl<T> ChannelSyncTx<T> {
 
 impl<T> ChannelSyncRx<T> {
     #[inline]
-    pub fn try_recv(&self) -> Result<T, TryRecvError> {
+    pub fn try_recv(&self) -> std::result::Result<T, TryRecvError> {
         match self.inner.try_recv() {
             Ok(res) => {
                 Ok(res)
@@ -87,10 +89,10 @@ impl<T> ChannelSyncRx<T> {
             Err(err) => {
                 match err {
                     crossbeam_channel::TryRecvError::Empty => {
-                        Err(TryRecvError::ChannelEmpty)
+                        Err!(TryRecvError::ChannelEmpty)
                     }
                     crossbeam_channel::TryRecvError::Disconnected => {
-                        Err(TryRecvError::ChannelDc)
+                        Err!(TryRecvError::ChannelDc)
                     }
                 }
             }
@@ -98,19 +100,19 @@ impl<T> ChannelSyncRx<T> {
     }
 
     #[inline]
-    pub fn recv(&self) -> Result<T, RecvError> {
+    pub fn recv(&self) -> Result<T> {
         match self.inner.recv() {
             Ok(res) => {
                 Ok(res)
             }
             Err(_err) => {
-                Err(RecvError::ChannelDc)
+                Err!(RecvError::ChannelDc)
             }
         }
     }
 
     #[inline]
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, TryRecvError> {
+    pub fn recv_timeout(&self, timeout: Duration) -> std::result::Result<T, TryRecvError> {
         match self.inner.recv_timeout(timeout) {
             Ok(result) => {
                 Ok(result)
@@ -118,10 +120,10 @@ impl<T> ChannelSyncRx<T> {
             Err(err) => {
                 match err {
                     RecvTimeoutError::Timeout => {
-                        Err(TryRecvError::Timeout)
+                        Err!(TryRecvError::Timeout)
                     }
                     RecvTimeoutError::Disconnected => {
-                        Err(TryRecvError::ChannelDc)
+                        Err!(TryRecvError::ChannelDc)
                     }
                 }
             }

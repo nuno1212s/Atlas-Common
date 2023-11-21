@@ -10,6 +10,8 @@ use std::pin::Pin;
 use std::future::Future;
 use std::task::{Context, Poll};
 use std::time::Duration;
+use anyhow::Context;
+use futures::task::SpawnExt;
 
 use crate::globals::Global;
 use crate::error::*;
@@ -89,7 +91,7 @@ impl<T> Future for JoinHandle<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         Pin::new(&mut self.inner)
             .poll(cx)
-            .map(|result| result.wrapped_msg(ErrorKind::AsyncRuntime, "Failed to join handle"))
+            .map(|result| result.context("Failed to join handle"))
     }
 }
 

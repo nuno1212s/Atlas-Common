@@ -12,6 +12,8 @@ use futures::stream::{
 };
 use futures::future::FusedFuture;
 use crate::channel::{RecvError, SendError};
+use crate::error::*;
+use crate::Err;
 
 pub struct ChannelAsyncTx<T> {
     inner: Sender<T>,
@@ -48,7 +50,7 @@ pub fn new_bounded<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelAsyncRx<T>) {
 
 impl<T> ChannelAsyncTx<T> {
     #[inline]
-    pub async fn send(&mut self, message: T) -> Result<(), SendError<T>> {
+    pub async fn send(&mut self, message: T) -> Result<()> {
         match self.inner
             .send(message)
             .await {
@@ -56,7 +58,7 @@ impl<T> ChannelAsyncTx<T> {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError(err.into_inner()))
+                Err!(SendError::from(err.into_inner()))
             }
         }
     }
@@ -71,13 +73,13 @@ impl<T> ChannelAsyncRx<T> {
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
-    type Output = Result<T, RecvError>;
+    type Output = Result<T>;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, RecvError>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T>> {
         Pin::new(&mut self.inner)
             .poll_next(cx)
-            .map(|opt| opt.ok_or(RecvError::ChannelDc))
+            .map(|opt| opt.ok_or(RecvError::ChannelDc.into()))
     }
 }
 

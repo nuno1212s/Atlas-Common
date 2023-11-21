@@ -9,6 +9,7 @@ use futures::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpStream, TcpListener};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
+use crate::error::*;
 
 pub struct Socket {
     inner: Compat<TcpStream>,
@@ -18,16 +19,18 @@ pub struct Listener {
     inner: TcpListener,
 }
 
-pub async fn bind<A: Into<SocketAddr>>(addr: A) -> io::Result<Listener> {
+pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
     TcpListener::bind(addr.into())
         .await
         .map(Listener::new)
+        .into()
 }
 
-pub async fn connect<A: Into<SocketAddr>>(addr: A) -> io::Result<Socket> {
+pub async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
     TcpStream::connect(addr.into())
         .await
         .map(|s| Socket::new(s.compat()))
+        .into()
 }
 
 impl Listener {
@@ -35,11 +38,12 @@ impl Listener {
         Listener { inner }
     }
 
-    pub async fn accept(&self) -> io::Result<Socket> {
+    pub async fn accept(&self) -> Result<Socket> {
         self.inner
             .accept()
             .await
             .map(|(s, _)| Socket::new(s.compat()))
+            .into()
     }
 }
 

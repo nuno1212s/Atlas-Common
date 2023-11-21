@@ -1,11 +1,15 @@
+use std::fmt::format;
 use std::path::Path;
+use anyhow::Context;
 
 use rocksdb::{
     ColumnFamily, ColumnFamilyDescriptor, CompactOptions, DBWithThreadMode, Direction,
     IteratorMode, Options, SingleThreaded, WriteBatchWithTransaction, DB,
 };
+use crate::Err;
 
 use crate::error::*;
+use crate::persistentdb::PersStorage;
 
 pub(crate) struct RocksKVDB {
     db: DBWithThreadMode<SingleThreaded>,
@@ -13,8 +17,8 @@ pub(crate) struct RocksKVDB {
 
 impl RocksKVDB {
     pub fn new<T>(db_location: T, prefixes: Vec<&'static str>) -> Result<Self>
-    where
-        T: AsRef<Path>,
+        where
+            T: AsRef<Path>,
     {
         let mut cfs = Vec::with_capacity(prefixes.len());
 
@@ -39,43 +43,40 @@ impl RocksKVDB {
         if let Some(handle) = handle {
             Ok(handle)
         } else {
-            Err(Error::simple_with_msg(
-                ErrorKind::PersistentdbRocksdb,
-                "Column family by that name does not exist",
-            ))
+            Err!(PersStorage::NoPrefix(prefix))
         }
     }
 
     pub fn get<T>(&self, prefix: &'static str, key: T) -> Result<Option<Vec<u8>>>
-    where
-        T: AsRef<[u8]>,
+        where
+            T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
         self.db
             .get_cf(handle, key)
-            .wrapped(ErrorKind::PersistentdbRocksdb)
+            .with_context(|| format!("Failed to get key: {:x?} for prefix {:?}", key.as_ref(), prefix))
     }
 
     pub fn get_all<T, Y>(&self, keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
-    where
-        T: Iterator<Item = (&'static str, Y)>,
-        Y: AsRef<[u8]>,
+        where
+            T: Iterator<Item=(&'static str, Y)>,
+            Y: AsRef<[u8]>,
     {
         let final_keys =
-            keys.map(|(prefix, key)| (self.get_handle(prefix).expect("Failed to get handle"), key));
+            keys.map(|(prefix, key)| (self.get_handle(prefix)?, key));
 
         Ok(self
             .db
             .multi_get_cf(final_keys)
             .into_iter()
-            .map(|r| r.wrapped(ErrorKind::PersistentdbRocksdb))
+            .map(|r| r)
             .collect())
     }
 
     pub fn exists<T>(&self, prefix: &'static str, key: T) -> Result<bool>
-    where
-        T: AsRef<[u8]>,
+        where
+            T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -83,22 +84,22 @@ impl RocksKVDB {
     }
 
     pub fn set<T, Y>(&self, prefix: &'static str, key: T, data: Y) -> Result<()>
-    where
-        T: AsRef<[u8]>,
-        Y: AsRef<[u8]>,
+        where
+            T: AsRef<[u8]>,
+            Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
         self.db
             .put_cf(handle, key, data)
-            .wrapped(ErrorKind::PersistentdbRocksdb)
+            .with_context(|| format!("Failed to set {:x?} in prefix {:?}", key.as_ref(), prefix))
     }
 
     pub fn set_all<T, Y, Z>(&self, prefix: &'static str, values: T) -> Result<()>
-    where
-        T: Iterator<Item = (Y, Z)>,
-        Y: AsRef<[u8]>,
-        Z: AsRef<[u8]>,
+        where
+            T: Iterator<Item=(Y, Z)>,
+            Y: AsRef<[u8]>,
+            Z: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -108,27 +109,28 @@ impl RocksKVDB {
             batch.put_cf(handle, key, value)
         }
 
-        self.db.write(batch).wrapped(ErrorKind::PersistentdbRocksdb)
+        self.db.write(batch)
+            .with_context(|| format!("Failed to set keys"))
     }
 
     pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
-    where
-        T: AsRef<[u8]>,
+        where
+            T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
         self.db
             .delete_cf(handle, key)
-            .wrapped(ErrorKind::PersistentdbRocksdb)
+            .context(|| format!("Failed to erase {:x?} in prefix {:?}", key.as_ref(), prefix))
     }
 
     /// Delete a set of keys
     /// Accepts an [`&[&[u8]]`], in any possible form, as long as it can be dereferenced
     /// all the way to the intended target.
     pub fn erase_keys<T, Y>(&self, prefix: &'static str, keys: T) -> Result<()>
-    where
-        T: Iterator<Item = Y>,
-        Y: AsRef<[u8]>,
+        where
+            T: Iterator<Item=Y>,
+            Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -138,18 +140,20 @@ impl RocksKVDB {
             batch.delete_cf(handle, key)
         }
 
-        self.db.write(batch).wrapped(ErrorKind::PersistentdbRocksdb)
+        self.db.write(batch)
+            .with_context(|| format!("Failed to erase {:x?} in prefix {:?}", keys.map(|key| key.as_ref()).collect(), prefix))
     }
 
     pub fn erase_range<T>(&self, prefix: &'static str, start: T, end: T) -> Result<()>
-    where
-        T: AsRef<[u8]>,
+        where
+            T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
         self.db
             .delete_range_cf(handle, start, end)
-            .wrapped(ErrorKind::PersistentdbRocksdb)
+            .with_context(|| format!("Failed to erase {:x?} to {:x?} in prefix {:?}",
+                                     start.as_ref(), end.as_ref(), prefix))
     }
 
     pub fn compact_range<T, Y>(
@@ -158,9 +162,9 @@ impl RocksKVDB {
         start: Option<T>,
         end: Option<Y>,
     ) -> Result<()>
-    where
-        T: AsRef<[u8]>,
-        Y: AsRef<[u8]>,
+        where
+            T: AsRef<[u8]>,
+            Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -174,10 +178,10 @@ impl RocksKVDB {
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>,Box<[u8]>)>> + '_>>
-    where
-        T: AsRef<[u8]>,
-        Y: AsRef<[u8]>
+    ) -> Result<Box<dyn Iterator<Item=Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
+        where
+            T: AsRef<[u8]>,
+            Y: AsRef<[u8]>
     {
         let handle = self.get_handle(prefix)?;
 
@@ -194,6 +198,6 @@ impl RocksKVDB {
             iterator.set_mode(IteratorMode::From(end.as_ref(), Direction::Reverse));
         }
 
-        Ok(Box::new(iterator.map(|r| r.wrapped(ErrorKind::PersistentdbRocksdb))))
+        Ok(Box::new(iterator.map(|r| r)))
     }
 }
