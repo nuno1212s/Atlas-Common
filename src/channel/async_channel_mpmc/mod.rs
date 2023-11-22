@@ -11,7 +11,7 @@ use futures::stream::{
     FusedStream,
 };
 use futures::future::FusedFuture;
-use crate::channel::{RecvError, SendError};
+use crate::channel::{RecvError, SendReturnError};
 use crate::error::*;
 use crate::Err;
 
@@ -58,7 +58,7 @@ impl<T> ChannelAsyncTx<T> {
                 Ok(())
             }
             Err(err) => {
-                Err!(SendError::FailedToSend(err.into_inner()))
+                Err!(SendReturnError::FailedToSend(err.into_inner()))
             }
         }
     }

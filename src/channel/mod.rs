@@ -8,6 +8,7 @@ use std::time::Duration;
 use anyhow::Error;
 
 use futures::future::FusedFuture;
+use futures::TryFutureExt;
 use log::error;
 use thiserror::Error;
 use crate::Err;
@@ -92,7 +93,7 @@ impl<T> ChannelAsyncTx<T> {
 
     //Asynchronously send message through channel
     #[inline]
-    pub async fn send(&mut self, message: T) -> std::result::Result<(), SendError<T>> {
+    pub async fn send(&mut self, message: T) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send(message).await
     }
 }
@@ -189,24 +190,29 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> Result<()> {
+        self.send_return(value).map_err(SendError::from).map_err(anyhow::Error::from)
+    }
+
+    #[inline]
+    pub fn send_return(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         let value = match self.inner.try_send(value) {
             Ok(_) => {
                 return Ok(());
             }
             Err(err) => {
                 match err {
-                    TrySendError::Full(value) => {
+                    TrySendReturnError::Full(value) => {
                         error!("Failed to insert into channel. Channel is full and could not directly insert, blocking. {:?}", self.channel_identifier);
 
                         value
                     }
-                    TrySendError::Disconnected(value) => {
+                    TrySendReturnError::Disconnected(value) => {
                         error!("Channel is disconnected");
 
                         value
                     }
-                    TrySendError::Timeout(value) => {
+                    TrySendReturnError::Timeout(value) => {
                         value
                     }
                 }
@@ -217,12 +223,22 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendError<T>> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<()> {
+        self.send_timeout_return(value, timeout).map_err(TrySendError::from).map_err(anyhow::Error::from)
+    }
+
+    #[inline]
+    pub fn send_timeout_return(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendReturnError<T>> {
         self.inner.send_timeout(value, timeout)
     }
 
     #[inline]
-    pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendError<T>> {
+    pub fn try_send(&self, value: T) -> Result<()> {
+        self.try_send_return(value).map_err(TrySendError::from).map_err(anyhow::Error::from)
+    }
+
+    #[inline]
+    pub fn try_send_return(&self, value: T) -> std::result::Result<(), TrySendReturnError<T>> {
         self.inner.try_send(value)
     }
 }
@@ -351,17 +367,27 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> std::result::Result<(), SendError<T>> {
+    pub async fn send_async(&self, value: T) -> Result<()> {
+        self.send_async_return(value).await.map_err(SendError::from).map_err(anyhow::Error::from)
+    }
+
+    #[inline]
+    pub async fn send_async_return(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> Result<()> {
+        self.send_return(value).map_err(SendError::from).map_err(anyhow::Error::from)
+    }
+
+    #[inline]
+    pub fn send_return(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send_sync(value)
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), SendError<T>> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send_timeout(value, timeout)
     }
 }
@@ -419,12 +445,12 @@ impl<T> ChannelMultTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> std::result::Result<(), SendError<T>> {
+    pub async fn send_async(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send_blk(value)
     }
 }
@@ -514,7 +540,7 @@ pub enum RecvError {
 }
 
 #[derive(Error)]
-pub enum TrySendError<T> {
+pub enum TrySendReturnError<T> {
     #[error("Channel has disconnected")]
     Disconnected(T),
     #[error("Send operation has timed out")]
@@ -523,28 +549,66 @@ pub enum TrySendError<T> {
     Full(T),
 }
 
+#[derive(Error, Debug)]
+pub enum SendError {
+    #[error("Failed to send message")]
+    FailedToSend
+}
+
+#[derive(Error, Debug)]
+pub enum TrySendError {
+    #[error("Channel has disconnected")]
+    Disconnected,
+    #[error("Send operation has timed out")]
+    Timeout,
+    #[error("Channel is full")]
+    Full,
+}
+
 #[derive(Error)]
-pub enum SendError<T> {
+pub enum SendReturnError<T> {
     #[error("Failed to send message")]
     FailedToSend(T)
 }
 
-unsafe impl<T> Send for SendError<T> {}
+unsafe impl<T> Send for SendReturnError<T> {}
 
-unsafe impl<T> Sync for SendError<T> {}
+unsafe impl<T> Sync for SendReturnError<T> {}
 
-unsafe impl<T> Send for TrySendError<T> {}
+unsafe impl<T> Send for TrySendReturnError<T> {}
 
-unsafe impl<T> Sync for TrySendError<T> {}
+unsafe impl<T> Sync for TrySendReturnError<T> {}
 
-impl<T> Debug for SendError<T> {
+impl<T> Debug for SendReturnError<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Failed to send message")
     }
 }
 
-impl<T> Debug for TrySendError<T> {
+impl<T> Debug for TrySendReturnError<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Failed to send message")
+    }
+}
+
+impl<T> From<SendReturnError<T>> for SendError {
+    fn from(value: SendReturnError<T>) -> Self {
+        match value { SendReturnError::FailedToSend(_) => SendError::FailedToSend }
+    }
+}
+
+impl<T> From<TrySendReturnError<T>> for TrySendError {
+    fn from(value: TrySendReturnError<T>) -> Self {
+        match value {
+            TrySendReturnError::Disconnected(_) => {
+                TrySendError::Disconnected
+            }
+            TrySendReturnError::Timeout(_) => {
+                TrySendError::Timeout
+            }
+            TrySendReturnError::Full(_) => {
+                TrySendError::Full
+            }
+        }
     }
 }

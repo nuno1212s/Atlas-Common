@@ -6,7 +6,7 @@ use std::time::Duration;
 use flume::RecvTimeoutError;
 
 use futures::future::FusedFuture;
-use crate::channel::{RecvError, SendError, TryRecvError};
+use crate::channel::{RecvError, SendReturnError, TryRecvError};
 use crate::error::*;
 use crate::Err;
 
@@ -52,37 +52,37 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> std::result::Result<(), SendError<T>> {
+    pub async fn send(&self, message: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send_async(message).await {
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError::FailedToSend(err.into_inner()))
+                Err(SendReturnError::FailedToSend(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_sync(&self, message: T) -> std::result::Result<(), SendError<T>> {
+    pub fn send_sync(&self, message: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send(message) {
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError::FailedToSend(err.into_inner()))
+                Err(SendReturnError::FailedToSend(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_timeout(&self, message: T, timeout: Duration) -> std::result::Result<(), SendError<T>> {
+    pub fn send_timeout(&self, message: T, timeout: Duration) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send_timeout(message, timeout){
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError::FailedToSend(err.into_inner()))
+                Err(SendReturnError::FailedToSend(err.into_inner()))
             }
         }
     }

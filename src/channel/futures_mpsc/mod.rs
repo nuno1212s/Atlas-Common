@@ -11,7 +11,7 @@ use futures::future::{
     poll_fn,
     FusedFuture,
 };
-use crate::channel::{RecvError, SendError};
+use crate::channel::{RecvError, SendReturnError};
 use crate::error::*;
 use crate::Err;
 
@@ -43,11 +43,11 @@ pub fn new_bounded<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelRx<T>) {
 
 impl<T> ChannelAsyncTx<T> {
     #[inline]
-    pub async fn send(&mut self, message: T) -> std::result::Result<(), SendError<T>> {
+    pub async fn send(&mut self, message: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.ready().await {
             Ok(_) => {}
             Err(_) => {
-                return Err(SendError::FailedToSend(message));
+                return Err(SendReturnError::FailedToSend(message));
             }
         };
 
@@ -57,7 +57,7 @@ impl<T> ChannelAsyncTx<T> {
                 Ok(())
             }
             Err(err) => {
-                Err(SendError::FailedToSend(err.into_inner()))
+                Err(SendReturnError::FailedToSend(err.into_inner()))
             }
         }
     }

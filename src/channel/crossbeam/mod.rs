@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::time::Duration;
 use crate::error::*;
 use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
-use crate::channel::{RecvError, SendError, TryRecvError, TrySendError};
+use crate::channel::{RecvError, SendReturnError, TryRecvError, TrySendReturnError};
 use crate::Err;
 
 pub struct ChannelSyncRx<T> {
@@ -31,17 +31,17 @@ impl<T> Clone for ChannelSyncRx<T> {
 
 impl<T> ChannelSyncTx<T> {
     #[inline]
-    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
+    pub fn send(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send(value) {
             Ok(_) => { Ok(()) }
             Err(err) => {
-                Err(SendError::FailedToSend(err.into_inner()))
+                Err(SendReturnError::FailedToSend(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendError<T>> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendReturnError<T>> {
         match self.inner.send_timeout(value, timeout) {
             Ok(_) => {
                 Ok(())
@@ -49,10 +49,10 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     SendTimeoutError::Timeout(t) => {
-                        Err(TrySendError::Timeout(t))
+                        Err(TrySendReturnError::Timeout(t))
                     }
                     SendTimeoutError::Disconnected(t) => {
-                        Err(TrySendError::Disconnected(t))
+                        Err(TrySendReturnError::Disconnected(t))
                     }
                 }
             }
@@ -60,7 +60,7 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendError<T>> {
+    pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendReturnError<T>> {
         match self.inner.try_send(value) {
             Ok(_) => {
                 Ok(())
@@ -68,10 +68,10 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     crossbeam_channel::TrySendError::Full(value) => {
-                        Err(TrySendError::Full(value))
+                        Err(TrySendReturnError::Full(value))
                     }
                     crossbeam_channel::TrySendError::Disconnected(value) => {
-                        Err(TrySendError::Disconnected(value))
+                        Err(TrySendReturnError::Disconnected(value))
                     }
                 }
             }

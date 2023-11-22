@@ -8,7 +8,7 @@ use dsrust::queues::lf_array_queue::LFBQueue;
 use dsrust::queues::mqueue::MQueue;
 
 use futures::future::FusedFuture;
-use crate::channel::{RecvError, RecvMultError, SendError};
+use crate::channel::{RecvError, RecvMultError, SendReturnError};
 use crate::error::*;
 use crate::Err;
 
@@ -58,18 +58,18 @@ impl<T> ChannelTx<T> where {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> std::result::Result<(), SendError<T>> {
+    pub async fn send(&self, message: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send_async(message).await {
             Ok(_) => { Ok(()) }
-            Err(err) => { Err(SendError::FailedToSend(err.0)) }
+            Err(err) => { Err(SendReturnError::FailedToSend(err.0)) }
         }
     }
 
     #[inline]
-    pub fn send_blk(&self, message: T) -> std::result::Result<(), SendError<T>> {
+    pub fn send_blk(&self, message: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send(message) {
             Ok(_) => { Ok(()) }
-            Err(err) => { Err(SendError::FailedToSend(err.0)) }
+            Err(err) => { Err(SendReturnError::FailedToSend(err.0)) }
         }
     }
 }
