@@ -12,12 +12,18 @@ mod ring_ed25519;
 
 #[derive(Error, Debug)]
 pub enum SignError {
-    #[error("Invalid signature")]
-    InvalidSignature,
+    #[error("Invalid signature {0:?}")]
+    InvalidSignature(String),
     #[error("Invalid public key, length is wrong {0}")]
     PublicKeyLen(usize),
     #[error("Invalid signature, length is wrong {0}")]
     SignatureLen(usize),
+}
+
+#[derive(Error, Debug)]
+pub enum VerifyError {
+    #[error("Failed too verify signature {0:?}")]
+    VerificationError(String),
 }
 
 /// A `KeyPair` holds both the private and public key components

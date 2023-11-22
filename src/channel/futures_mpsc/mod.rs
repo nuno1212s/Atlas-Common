@@ -43,11 +43,11 @@ pub fn new_bounded<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelRx<T>) {
 
 impl<T> ChannelAsyncTx<T> {
     #[inline]
-    pub async fn send(&mut self, message: T) -> Result<()> {
+    pub async fn send(&mut self, message: T) -> std::result::Result<(), SendError<T>> {
         match self.ready().await {
             Ok(_) => {}
             Err(_) => {
-                return Err!(SendError::from(message));
+                return Err(SendError::FailedToSend(message));
             }
         };
 
@@ -57,7 +57,7 @@ impl<T> ChannelAsyncTx<T> {
                 Ok(())
             }
             Err(err) => {
-                Err!(SendError::from(err.into_inner()))
+                Err(SendError::FailedToSend(err.into_inner()))
             }
         }
     }

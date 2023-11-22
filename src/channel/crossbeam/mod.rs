@@ -31,11 +31,11 @@ impl<T> Clone for ChannelSyncRx<T> {
 
 impl<T> ChannelSyncTx<T> {
     #[inline]
-    pub fn send(&self, value: T) -> Result<()> {
+    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
         match self.inner.send(value) {
             Ok(_) => { Ok(()) }
             Err(err) => {
-                Err!(SendError::from(err.into_inner()))
+                Err(SendError::FailedToSend(err.into_inner()))
             }
         }
     }
@@ -49,10 +49,10 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     SendTimeoutError::Timeout(t) => {
-                        Err!(TrySendError::Timeout(t))
+                        Err(TrySendError::Timeout(t))
                     }
                     SendTimeoutError::Disconnected(t) => {
-                        Err!(TrySendError::Disconnected(t))
+                        Err(TrySendError::Disconnected(t))
                     }
                 }
             }
@@ -68,10 +68,10 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => {
                 match err {
                     crossbeam_channel::TrySendError::Full(value) => {
-                        Err!(TrySendError::Full(value))
+                        Err(TrySendError::Full(value))
                     }
                     crossbeam_channel::TrySendError::Disconnected(value) => {
-                        Err!(TrySendError::Disconnected(value))
+                        Err(TrySendError::Disconnected(value))
                     }
                 }
             }
@@ -89,10 +89,10 @@ impl<T> ChannelSyncRx<T> {
             Err(err) => {
                 match err {
                     crossbeam_channel::TryRecvError::Empty => {
-                        Err!(TryRecvError::ChannelEmpty)
+                        Err(TryRecvError::ChannelEmpty)
                     }
                     crossbeam_channel::TryRecvError::Disconnected => {
-                        Err!(TryRecvError::ChannelDc)
+                        Err(TryRecvError::ChannelDc)
                     }
                 }
             }

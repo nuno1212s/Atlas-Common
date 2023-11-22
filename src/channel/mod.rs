@@ -5,10 +5,12 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
+use anyhow::Error;
 
 use futures::future::FusedFuture;
 use log::error;
 use thiserror::Error;
+use crate::Err;
 use crate::error::*;
 
 
@@ -90,7 +92,7 @@ impl<T> ChannelAsyncTx<T> {
 
     //Asynchronously send message through channel
     #[inline]
-    pub async fn send(&mut self, message: T) -> Result<()> {
+    pub async fn send(&mut self, message: T) -> std::result::Result<(), SendError<T>> {
         self.inner.send(message).await
     }
 }
@@ -187,10 +189,10 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> Result<()> {
+    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
         let value = match self.inner.try_send(value) {
             Ok(_) => {
-                return Ok(())
+                return Ok(());
             }
             Err(err) => {
                 match err {
@@ -215,12 +217,12 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<()> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendError<T>> {
         self.inner.send_timeout(value, timeout)
     }
 
     #[inline]
-    pub fn try_send(&self, value: T) -> Result<()> {
+    pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendError<T>> {
         self.inner.try_send(value)
     }
 }
@@ -229,7 +231,7 @@ impl<T> Clone for ChannelSyncTx<T> {
     fn clone(&self) -> Self {
         ChannelSyncTx {
             channel_identifier: self.channel_identifier.clone(),
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -244,8 +246,7 @@ impl<T> Clone for ChannelSyncRx<T> {
 
 #[inline]
 pub fn new_bounded_sync<T>(bound: usize, name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-
-    let name = name.map(|string|  String::from(string));
+    let name = name.map(|string| String::from(string));
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {
@@ -265,7 +266,6 @@ pub fn new_bounded_sync<T>(bound: usize, name: Option<&str>) -> (ChannelSyncTx<T
 
 #[inline]
 pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-
     let name = name.map(|string| String::from(string));
 
     #[cfg(feature = "channel_sync_crossbeam")]
@@ -309,7 +309,7 @@ impl<T> ChannelMixedRx<T> {
                 Ok(res)
             }
             Err(_err) => {
-                Err(RecvError::ChannelDc)
+                Err!(RecvError::ChannelDc)
             }
         }
     }
@@ -321,7 +321,7 @@ impl<T> ChannelMixedRx<T> {
                 Ok(result)
             }
             Err(_err) => {
-                Err(RecvError::ChannelDc)
+                Err!(RecvError::ChannelDc)
             }
         }
     }
@@ -333,7 +333,7 @@ impl<T> ChannelMixedRx<T> {
                 Ok(val)
             }
             Err(_err) => {
-                Err(RecvError::ChannelDc)
+                Err!(RecvError::ChannelDc)
             }
         }
     }
@@ -351,17 +351,17 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> Result<()> {
+    pub async fn send_async(&self, value: T) -> std::result::Result<(), SendError<T>> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> Result<()> {
+    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
         self.inner.send_sync(value)
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<()> {
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), SendError<T>> {
         self.inner.send_timeout(value, timeout)
     }
 }
@@ -419,18 +419,17 @@ impl<T> ChannelMultTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> Result<()> {
+    pub async fn send_async(&self, value: T) -> std::result::Result<(), SendError<T>> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> Result<()> {
+    pub fn send(&self, value: T) -> std::result::Result<(), SendError<T>> {
         self.inner.send_blk(value)
     }
 }
 
 impl<T> ChannelMultRx<T> {
-
     pub fn is_dc(&self) -> bool {
         self.inner.is_dc()
     }
@@ -488,7 +487,6 @@ pub fn new_oneshot_channel<T>() -> (OneShotTx<T>, OneShotRx<T>) {
 /**
 Errors
  **/
-
 #[derive(Error, Debug)]
 pub enum RecvMultError {
     #[error("Failed receive, channel is disconnected")]
@@ -515,17 +513,38 @@ pub enum RecvError {
     ChannelDc,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error)]
 pub enum TrySendError<T> {
     #[error("Channel has disconnected")]
     Disconnected(T),
     #[error("Send operation has timed out")]
     Timeout(T),
     #[error("Channel is full")]
-    Full(T)
+    Full(T),
 }
 
-#[derive(Error, Debug)]
+#[derive(Error)]
 pub enum SendError<T> {
-    FailedToSend(#[from] T)
+    #[error("Failed to send message")]
+    FailedToSend(T)
+}
+
+unsafe impl<T> Send for SendError<T> {}
+
+unsafe impl<T> Sync for SendError<T> {}
+
+unsafe impl<T> Send for TrySendError<T> {}
+
+unsafe impl<T> Sync for TrySendError<T> {}
+
+impl<T> Debug for SendError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Failed to send message")
+    }
+}
+
+impl<T> Debug for TrySendError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Failed to send message")
+    }
 }

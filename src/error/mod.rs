@@ -7,20 +7,19 @@
 #[macro_export]
 macro_rules! Err {
     ($err:expr $(,)?) => {{
-        let error = $err;
-        Err(anyhow::anyhow!(error))
+        Err(From::from($err))
     }};
 }
 
 #[macro_export]
 macro_rules! quiet_unwrap {
     ($err:expr) => {
-        
+
         match $err {
             Ok(value) => value,
             Err(err) => {
                 error!("{}", err);
-                
+
                 return;
             }
         };

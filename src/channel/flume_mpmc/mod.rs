@@ -52,37 +52,37 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> Result<()> {
+    pub async fn send(&self, message: T) -> std::result::Result<(), SendError<T>> {
         match self.inner.send_async(message).await {
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err!(SendError::from(err.into_inner()))
+                Err(SendError::FailedToSend(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_sync(&self, message: T) ->Result<()> {
+    pub fn send_sync(&self, message: T) -> std::result::Result<(), SendError<T>> {
         match self.inner.send(message) {
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err!(SendError::from(err.into_inner()))
+                Err(SendError::FailedToSend(err.into_inner()))
             }
         }
     }
 
     #[inline]
-    pub fn send_timeout(&self, message: T, timeout: Duration) -> Result<()> {
+    pub fn send_timeout(&self, message: T, timeout: Duration) -> std::result::Result<(), SendError<T>> {
         match self.inner.send_timeout(message, timeout){
             Ok(_) => {
                 Ok(())
             }
             Err(err) => {
-                Err!(SendError::from(err.into_inner()))
+                Err(SendError::FailedToSend(err.into_inner()))
             }
         }
     }

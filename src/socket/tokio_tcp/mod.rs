@@ -20,17 +20,19 @@ pub struct Listener {
 }
 
 pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
-    TcpListener::bind(addr.into())
+    let listener = TcpListener::bind(addr.into())
         .await
-        .map(Listener::new)
-        .into()
+        .map(Listener::new)?;
+
+    Ok(listener)
 }
 
 pub async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
-    TcpStream::connect(addr.into())
+    let socket = TcpStream::connect(addr.into())
         .await
-        .map(|s| Socket::new(s.compat()))
-        .into()
+        .map(|s| Socket::new(s.compat()))?;
+
+    Ok(socket)
 }
 
 impl Listener {
@@ -39,11 +41,12 @@ impl Listener {
     }
 
     pub async fn accept(&self) -> Result<Socket> {
-        self.inner
+        let socket = self.inner
             .accept()
             .await
-            .map(|(s, _)| Socket::new(s.compat()))
-            .into()
+            .map(|(s, _)| Socket::new(s.compat()))?;
+
+        Ok(socket)
     }
 }
 

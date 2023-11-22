@@ -8,7 +8,7 @@ mod async_std;
 
 use std::pin::Pin;
 use std::future::Future;
-use std::task::{Context, Poll};
+use std::task::{Context as Cntx, Poll};
 use std::time::Duration;
 use anyhow::Context;
 use futures::task::SpawnExt;
@@ -88,7 +88,7 @@ pub fn block_on<F: Future>(future: F) -> F::Output {
 impl<T> Future for JoinHandle<T> {
     type Output = Result<T>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<Self::Output> {
         Pin::new(&mut self.inner)
             .poll(cx)
             .map(|result| result.context("Failed to join handle"))
@@ -104,7 +104,7 @@ pub async fn yield_now() {
     impl Future for YieldNow {
         type Output = ();
 
-        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<()> {
             if self.yielded {
                 return Poll::Ready(());
             }

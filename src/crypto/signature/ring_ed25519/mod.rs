@@ -10,7 +10,9 @@ use ring::{
     signature::KeyPair as RKeyPair,
     signature::ED25519_PUBLIC_KEY_LEN,
 };
-use crate::crypto::signature::SignError;
+use ring::error::{KeyRejected, Unspecified};
+use ring::signature::Ed25519KeyPair;
+use crate::crypto::signature::{SignError, VerifyError};
 use crate::Err;
 
 use crate::error::*;
@@ -37,8 +39,13 @@ pub struct Signature(
 
 impl KeyPair {
     pub fn from_bytes(seed_bytes: &[u8]) -> Result<(Self, Vec<u8>)> {
-        let sk = rsig::Ed25519KeyPair::from_seed_unchecked(seed_bytes)
-            .context("Invalid seed for ed25519 key")?;
+        let sk = match rsig::Ed25519KeyPair::from_seed_unchecked(seed_bytes) {
+            Ok(sk) => sk,
+            Err(err) => {
+                return Err!(SignError::InvalidSignature(format!("{}", err)));
+            }
+        };
+
         let pk = sk.public_key().clone();
         let pk_bytes = pk.as_ref();
 
@@ -79,7 +86,14 @@ impl PublicKey {
     }
 
     pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
-        self.pk.verify(message, signature.as_ref()).context("Invalid signature")
+        match self.pk.verify(message, signature.as_ref()) {
+            Ok(_) => {
+                Ok(())
+            }
+            Err(err) => {
+                Err!(VerifyError::VerificationError(format!("{}", err)))
+            }
+        }
     }
 }
 

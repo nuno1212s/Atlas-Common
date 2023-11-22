@@ -58,18 +58,18 @@ impl<T> ChannelTx<T> where {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> Result<()> {
+    pub async fn send(&self, message: T) -> std::result::Result<(), SendError<T>> {
         match self.inner.send_async(message).await {
             Ok(_) => { Ok(()) }
-            Err(err) => { Err!(SendError::from(err.0)) }
+            Err(err) => { Err(SendError::FailedToSend(err.0)) }
         }
     }
 
     #[inline]
-    pub fn send_blk(&self, message: T) -> Result<()> {
+    pub fn send_blk(&self, message: T) -> std::result::Result<(), SendError<T>> {
         match self.inner.send(message) {
             Ok(_) => { Ok(()) }
-            Err(err) => { Err!(SendError::from(err.0)) }
+            Err(err) => { Err(SendError::FailedToSend(err.0)) }
         }
     }
 }

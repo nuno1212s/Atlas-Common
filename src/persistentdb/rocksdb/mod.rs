@@ -1,6 +1,6 @@
 use std::fmt::format;
 use std::path::Path;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 
 use rocksdb::{
     ColumnFamily, ColumnFamilyDescriptor, CompactOptions, DBWithThreadMode, Direction,
@@ -55,7 +55,7 @@ impl RocksKVDB {
 
         self.db
             .get_cf(handle, key)
-            .with_context(|| format!("Failed to get key: {:x?} for prefix {:?}", key.as_ref(), prefix))
+            .with_context(|| format!("Failed to get for prefix {:?}", prefix))
     }
 
     pub fn get_all<T, Y>(&self, keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
@@ -63,15 +63,25 @@ impl RocksKVDB {
             T: Iterator<Item=(&'static str, Y)>,
             Y: AsRef<[u8]>,
     {
-        let final_keys =
-            keys.map(|(prefix, key)| (self.get_handle(prefix)?, key));
+        let final_keys: Result<Vec<_>> =
+            keys.map(|(prefix, key)| {
+                if let Ok(handle) = self.get_handle(prefix) {
+                    Ok((handle, key))
+                } else {
+                    Err(anyhow!(""))
+                }
+            }).collect();
 
-        Ok(self
-            .db
-            .multi_get_cf(final_keys)
+        Ok(self.db
+            .multi_get_cf(final_keys?)
             .into_iter()
-            .map(|r| r)
-            .collect())
+            .map(|r| {
+                if let Ok(result) = r {
+                    Ok(result)
+                } else {
+                    Err(anyhow!(""))
+                }
+            }).collect())
     }
 
     pub fn exists<T>(&self, prefix: &'static str, key: T) -> Result<bool>
@@ -92,7 +102,7 @@ impl RocksKVDB {
 
         self.db
             .put_cf(handle, key, data)
-            .with_context(|| format!("Failed to set {:x?} in prefix {:?}", key.as_ref(), prefix))
+            .context(format!("Failed to set in prefix {:?}", prefix))
     }
 
     pub fn set_all<T, Y, Z>(&self, prefix: &'static str, values: T) -> Result<()>
@@ -110,7 +120,7 @@ impl RocksKVDB {
         }
 
         self.db.write(batch)
-            .with_context(|| format!("Failed to set keys"))
+            .context(format!("Failed to set keys"))
     }
 
     pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
@@ -121,7 +131,7 @@ impl RocksKVDB {
 
         self.db
             .delete_cf(handle, key)
-            .context(|| format!("Failed to erase {:x?} in prefix {:?}", key.as_ref(), prefix))
+            .context(format!("Failed to erase key in prefix {:?}", prefix))
     }
 
     /// Delete a set of keys
@@ -141,7 +151,7 @@ impl RocksKVDB {
         }
 
         self.db.write(batch)
-            .with_context(|| format!("Failed to erase {:x?} in prefix {:?}", keys.map(|key| key.as_ref()).collect(), prefix))
+            .context(format!("Failed to erase in prefix {:?}", prefix))
     }
 
     pub fn erase_range<T>(&self, prefix: &'static str, start: T, end: T) -> Result<()>
@@ -152,8 +162,7 @@ impl RocksKVDB {
 
         self.db
             .delete_range_cf(handle, start, end)
-            .with_context(|| format!("Failed to erase {:x?} to {:x?} in prefix {:?}",
-                                     start.as_ref(), end.as_ref(), prefix))
+            .with_context(|| format!("Failed to erase in prefix {:?}", prefix))
     }
 
     pub fn compact_range<T, Y>(
@@ -198,6 +207,12 @@ impl RocksKVDB {
             iterator.set_mode(IteratorMode::From(end.as_ref(), Direction::Reverse));
         }
 
-        Ok(Box::new(iterator.map(|r| r)))
+        let mut bytes = vec![];
+
+        for futures in iterator {
+            bytes.push(Ok(futures?));
+        }
+
+        Ok(Box::new(bytes.into_iter()))
     }
 }

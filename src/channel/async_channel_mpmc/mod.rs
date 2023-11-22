@@ -58,7 +58,7 @@ impl<T> ChannelAsyncTx<T> {
                 Ok(())
             }
             Err(err) => {
-                Err!(SendError::from(err.into_inner()))
+                Err!(SendError::FailedToSend(err.into_inner()))
             }
         }
     }
