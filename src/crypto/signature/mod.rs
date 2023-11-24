@@ -69,6 +69,15 @@ pub struct Signature {
 }
 
 impl KeyPair {
+    pub fn from_pkcs8(bytes: &[u8]) -> Result<Self> {
+        let (inner, public_key) = {
+            #[cfg(feature = "crypto_signature_ring_ed25519")]
+            { ring_ed25519::KeyPair::from_pkcs8(bytes)? }
+        };
+
+        Ok(KeyPair { inner, pub_key_bytes: public_key })
+    }
+
     /// Constructs a `KeyPair` from a byte buffer of appropriate size.
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         let (inner, pk_bytes) = {
@@ -124,6 +133,7 @@ impl PublicKey {
             #[cfg(feature = "crypto_signature_ring_ed25519")]
             { ring_ed25519::PublicKey::from_bytes(raw_bytes)? }
         };
+
         Ok(PublicKey { inner, pk_bytes: raw_bytes.to_vec() })
     }
 

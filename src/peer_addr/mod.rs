@@ -10,27 +10,24 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PeerAddr {
-    // All nodes have a replica facing socket
-    pub replica_facing_socket: (SocketAddr, String),
-    // Only replicas have a client facing socket
-    pub client_facing_socket: Option<(SocketAddr, String)>,
+    // All nodes have a replica facing socket: (SocketAddr, String),
+    socket: SocketAddr,
+    hostname: String,
 }
 
 impl PeerAddr {
-    pub fn new(client_addr: (SocketAddr, String)) -> Self {
+    pub fn new(socket: SocketAddr, hostname: String) -> Self {
         Self {
-            replica_facing_socket: client_addr,
-            client_facing_socket: None,
+            socket,
+            hostname,
         }
     }
 
-    pub fn new_replica(
-        client_addr: (SocketAddr, String),
-        replica_addr: (SocketAddr, String),
-    ) -> Self {
-        Self {
-            replica_facing_socket: client_addr,
-            client_facing_socket: Some(replica_addr),
-        }
+    pub fn socket(&self) -> &SocketAddr {
+        &self.socket
+    }
+
+    pub fn hostname(&self) -> &String {
+        &self.hostname
     }
 }

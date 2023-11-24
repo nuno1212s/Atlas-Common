@@ -12,6 +12,7 @@ use ring::{
 };
 use ring::error::{KeyRejected, Unspecified};
 use ring::signature::Ed25519KeyPair;
+use rustls::PrivateKey;
 use crate::crypto::signature::{SignError, VerifyError};
 use crate::Err;
 
@@ -38,6 +39,21 @@ pub struct Signature(
 );
 
 impl KeyPair {
+    pub fn from_pkcs8(priv_key: &[u8]) -> Result<(Self, Vec<u8>)> {
+        let sk = Ed25519KeyPair::from_pkcs8(priv_key).context("")?;
+
+        let pk = sk.public_key().clone();
+
+        let pk_bytes = pk.as_ref();
+
+        let pk = PublicKey::from_bytes_unchecked(pk_bytes);
+
+        Ok((Self {
+            sk,
+            pk,
+        }, pk_bytes.to_vec()))
+    }
+
     pub fn from_bytes(seed_bytes: &[u8]) -> Result<(Self, Vec<u8>)> {
         let sk = match rsig::Ed25519KeyPair::from_seed_unchecked(seed_bytes) {
             Ok(sk) => sk,
@@ -104,7 +120,7 @@ impl Signature {
         if raw_bytes.len() < Self::LENGTH {
             return Err!(SignError::SignatureLen(raw_bytes.len()));
         }
-        
+
         Ok(Self::from_bytes_unchecked(raw_bytes))
     }
 
