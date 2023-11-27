@@ -11,7 +11,7 @@ macro_rules! Err {
     }};
 }
 
-/// 
+///
 #[macro_export]
 macro_rules! quiet_unwrap {
     ($err:expr) => {
@@ -25,6 +25,16 @@ macro_rules! quiet_unwrap {
             }
         };
     };
+    ($err:expr, $ret:expr) => {
+            match $err {
+                Ok(value) => value,
+                Err(err) => {
+                    error!("{}", err);
+    
+                    return $ret;
+                } 
+            };
+    }
 }
 
 /// Wrapper result type for `std::result::Result`.

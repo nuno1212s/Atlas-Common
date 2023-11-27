@@ -14,6 +14,8 @@ mod ring_ed25519;
 pub enum SignError {
     #[error("Invalid signature {0:?}")]
     InvalidSignature(String),
+    #[error("Invalid private key {0:?}")]
+    InvalidPK(String),
     #[error("Invalid public key, length is wrong {0}")]
     PublicKeyLen(usize),
     #[error("Invalid signature, length is wrong {0}")]

@@ -30,4 +30,8 @@ impl PeerAddr {
     pub fn hostname(&self) -> &String {
         &self.hostname
     }
+
+    pub fn into_inner(self) -> (SocketAddr, String) {
+        (self.socket, self.hostname)
+    }
 }

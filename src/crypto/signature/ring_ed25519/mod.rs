@@ -40,7 +40,12 @@ pub struct Signature(
 
 impl KeyPair {
     pub fn from_pkcs8(priv_key: &[u8]) -> Result<(Self, Vec<u8>)> {
-        let sk = Ed25519KeyPair::from_pkcs8(priv_key).context("")?;
+        let sk = match Ed25519KeyPair::from_pkcs8(priv_key) {
+            Ok(sk) => sk,
+            Err(err) => {
+                return Err!(SignError::InvalidPK(format!("{}", err)));
+            }
+        };
 
         let pk = sk.public_key().clone();
 
