@@ -71,7 +71,7 @@ impl PublicKeyPart {
         if self.key.verify(&sig.sig, msg) {
             Ok(())
         } else {
-            Err(anyhow!("Signature verification failed"))
+            Err(anyhow!("Partial signature verification failed"))
         }
     }
 }

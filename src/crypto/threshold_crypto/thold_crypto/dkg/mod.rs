@@ -365,14 +365,19 @@ pub mod dkg_test {
 
         let mut sigs = vec![];
 
-        for (pk, sk, _) in node_keys.iter() {
-            sigs.push(sk.partially_sign(DATA_TO_SIGN).unwrap());
+        for (node, (pk, sk, _)) in node_keys.iter().enumerate() {
+            let signature = sk.partially_sign(DATA_TO_SIGN).unwrap();
+
+            assert_eq!(pk.get_public_key_part(node + 1).unwrap(), sk.public_key_part());
+
+            pk.verify_partial_signature(node + 1, DATA_TO_SIGN, &signature).unwrap();
+
+            sigs.push(signature);
         }
 
         let combined_signatures = sigs.iter().enumerate().map(|(i, sig)| (i + 1, sig.clone())).collect::<Vec<_>>();
 
-        for node in 1..NODES {
-
+        for node in 1..=NODES {
             let (pk, sk, rx) = &node_keys[node - 1];
 
             let signature = pk.combine_signatures(combined_signatures.iter().cloned().take(FAULTY_NODES + 1).collect::<Vec<_>>().as_slice()).unwrap();
@@ -385,13 +390,11 @@ pub mod dkg_test {
     fn test_dkg() {
         let results = generate_keys_for_nodes();
 
-        let mut pks = vec![];
+        let (mut pks, mut sks, mut rxs) = (vec![], vec![], vec![]);
 
-        let mut sks = vec![];
+        for (node, (pk, sk, rx)) in results.into_iter().enumerate() {
+            assert_eq!(sk.public_key_part(), pk.get_public_key_part(node + 1).unwrap());
 
-        let mut rxs = vec![];
-
-        for (pk, sk, rx) in results {
             pks.push(pk);
             sks.push(sk);
             rxs.push(rx);
@@ -402,7 +405,6 @@ pub mod dkg_test {
         pks.iter().skip(1).for_each(|other_pk| {
             assert_eq!(pk, other_pk);
         });
-
     }
 
     fn generate_keys_for_nodes() -> Vec<(PublicKeySet, PrivateKeyPart, ChannelSyncRx<NodeMessage>)> {
@@ -439,7 +441,7 @@ pub mod dkg_test {
     fn run_node(mut node: Node, dealer_part: DealerPart, txs: Arc<ChannelDB>) -> (PublicKeySet, PrivateKeyPart, ChannelSyncRx<NodeMessage>) {
         println!("Running node {}", node.id);
 
-        std::thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 100)));
+        //std::thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 100)));
 
         let result: Result<()> = txs.channels.iter().map(|tx| {
             tx.send(NodeMessage {
@@ -485,7 +487,7 @@ pub mod dkg_test {
                     }
                 }
 
-                if node.dkg.complete() > FAULTY_NODES {
+                if node.dkg.complete() >= DEALERS {
                     eprintln!("Client {} has finished the DKG protocol with {}, needed {}", node.id, node.dkg.complete(), FAULTY_NODES);
 
                     let Node {
@@ -498,7 +500,7 @@ pub mod dkg_test {
 
                     eprintln!("Client {} has finished the DKG protocol", id);
                     eprintln!("Public key: {:?}", pk);
-                    eprintln!("Private key share: {:?}", sk);
+                    eprintln!("Private key share: {:?}", sk.key.reveal());
 
                     return (pk, sk, rx_channel);
                 }
