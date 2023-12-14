@@ -7,6 +7,9 @@ use crate::error::*;
 #[cfg(feature = "persistent_db_rocksdb")]
 pub mod rocksdb;
 
+#[cfg(feature = "persistent_db_sled")]
+pub mod sled;
+
 pub mod disabled;
 
 /// The basic implementation for the Key-Value DB used by this middleware

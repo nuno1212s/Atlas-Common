@@ -5,7 +5,8 @@
 //! C code, released to the public domain.
 
 use std::cell::RefCell;
-use rand_core::{RngCore, OsRng};
+use rand::{RngCore};
+use rand::rngs::OsRng;
 use thread_local::ThreadLocal;
 
 /// This type is a container for the 256-bit state of `xoshiro256**`.

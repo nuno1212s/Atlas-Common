@@ -151,9 +151,9 @@ mod tests {
         let k = KeyPair::from_bytes(&[0; 32][..]).expect("Invalid key bytes");
 
         let message = b"test message";
-        let signature = k.sign(message)
+        let signature = k.0.sign(message)
             .expect("Signature failed");
-        k
+        k.0
             .public_key()
             .verify(message, &signature)
             .expect("Verify failed");
