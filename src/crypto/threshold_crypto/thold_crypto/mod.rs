@@ -1,14 +1,13 @@
 use anyhow::{anyhow, Context};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use threshold_crypto::ff::Field;
-use threshold_crypto::group::CurveAffine;
 use threshold_crypto::{Fr, IntoFr};
 use threshold_crypto::poly::Commitment;
 
 use crate::error::*;
 
-mod dkg;
+pub mod dkg;
+//mod async_dkg;
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
@@ -52,19 +51,25 @@ pub struct Signature {
     sig: threshold_crypto::Signature,
 }
 
-#[derive( Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct SecretKeySet {
     sk_set: threshold_crypto::SecretKeySet,
 }
 
+/// The public key set
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PublicKeySet {
     pk_set: threshold_crypto::PublicKeySet,
 }
+
+/// A private key part
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[repr(transparent)]
+#[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
+pub struct PrivKeyPart(Fr);
 
 impl PublicKeyPart {
     pub fn verify(&self, msg: &[u8], sig: &PartialSignature) -> Result<()> {
@@ -78,9 +83,10 @@ impl PublicKeyPart {
 
 impl SecretKeySet {
     pub fn generate_random(n: usize) -> Result<SecretKeySet> {
-        let mut rand = rand::rngs::OsRng::default();
+        let mut rand = rand::rngs::OsRng::new()?;
 
-        let sk_set = threshold_crypto::SecretKeySet::try_random(n, &mut rand)?;
+        //FIXME: Fix this error
+        let sk_set = threshold_crypto::SecretKeySet::random(n, &mut rand);
 
         Ok(SecretKeySet {
             sk_set,
@@ -100,7 +106,6 @@ impl SecretKeySet {
             pk_set: self.sk_set.public_keys()
         }
     }
-
 }
 
 impl PrivateKeyPart {
@@ -118,15 +123,13 @@ impl PrivateKeyPart {
         })
     }
 
-    pub fn from_mut(sk: &mut Fr) -> Self {
-        let key = threshold_crypto::SecretKeyShare::from_mut(sk);
+    pub fn from_mut(mut sk: PrivKeyPart) -> Self {
+        let key = threshold_crypto::SecretKeyShare::from_mut(&mut sk.0);
 
         PrivateKeyPart {
             key,
         }
     }
-
-
 }
 
 impl PublicKey {
@@ -151,6 +154,7 @@ impl PublicKey {
 }
 
 impl PublicKeySet {
+    #[inline(always)]
     pub fn public_key(&self) -> PublicKey {
         let key = self.pk_set.public_key();
 
@@ -159,6 +163,7 @@ impl PublicKeySet {
         }
     }
 
+    #[inline(always)]
     pub fn get_public_key_part(&self, i: usize) -> Result<PublicKeyPart> {
         let key = self.pk_set.public_key_share(i);
 
@@ -167,13 +172,16 @@ impl PublicKeySet {
         })
     }
 
+    #[inline(always)]
     pub fn verify_partial_signature(&self, index: usize, msg: &[u8], sig: &PartialSignature) -> Result<()> {
         self.get_public_key_part(index)?.verify(msg, sig)
     }
 
+    #[inline(always)]
     pub fn combine_signatures(&self, sigs: &[(usize, PartialSignature)]) -> Result<Signature> {
-        let mut sigs = sigs.iter().map(|(index, sign)| (index, &sign.sig)).collect::<Vec<_>>();
+        let sigs = sigs.iter().map(|(index, sign)| (index, &sign.sig)).collect::<Vec<_>>();
 
+        //FIXME: Fix this error
         let sig = self.pk_set.combine_signatures(sigs)?;
 
         Ok(Signature {
@@ -181,12 +189,18 @@ impl PublicKeySet {
         })
     }
 
+    #[inline(always)]
     pub fn verify_combined_signature(&self, msg: &[u8], sig: &Signature) -> Result<()> {
         if self.public_key().verify_combined_signatures(&sig, msg) {
             Ok(())
         } else {
             Err(anyhow!("Signature verification failed"))
         }
+    }
+
+    #[inline(always)]
+    pub fn from_mut() -> Self {
+        Self
     }
 }
 

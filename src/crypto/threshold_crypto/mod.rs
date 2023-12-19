@@ -1,4 +1,4 @@
-mod thold_crypto;
+pub mod thold_crypto;
 //mod frost;
 
 #[cfg(feature = "serialize_serde")]
@@ -18,6 +18,13 @@ pub struct PublicKeyPart {
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PrivateKeyPart {
     key: thold_crypto::PrivateKeyPart,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+#[repr(transparent)]
+#[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
+pub struct PublicKeySet {
+    key: thold_crypto::PublicKeySet,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -49,6 +56,28 @@ pub struct Signature {
 }
 
 impl PublicKey {}
+
+impl PublicKeySet {
+    pub fn public_key(&self) -> PublicKey {
+        PublicKey { key: self.key.public_key() }
+    }
+
+    pub fn public_key_share(&self, index: usize) -> Result<PublicKeyPart> {
+        Ok(PublicKeyPart { key: self.key.get_public_key_part(index)? })
+    }
+
+    pub fn verify(&self, msg: &[u8], sig: &Signature) -> Result<()> {
+        self.key.verify(msg, &sig.sig)
+    }
+
+    pub fn combine_signatures(&self, sigs: &[(usize, PartialSignature)]) -> Result<Signature> {
+        let map = sigs.iter().map(|(id, sig)| &sig.sig).collect::<>();
+
+        Ok(Signature { sig: self.key.combine_signatures(map)? })
+    }
+
+
+}
 
 impl PublicKeyPart {
     pub fn verify(&self, msg: &[u8], sig: &PartialSignature) -> Result<()> {

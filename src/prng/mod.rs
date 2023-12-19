@@ -41,7 +41,8 @@ impl State {
     /// Creates a new PRNG from a cryptographically secure random seed.
     pub fn new() -> Self {
         let mut seed = [0; 32];
-        OsRng.fill_bytes(&mut seed);
+        //FIXME: Fix this error
+        OsRng::new().expect("Failed to alloc os rng").fill_bytes(&mut seed);
 
         let s = unsafe { std::mem::transmute(seed) };
         let mut s = State { s };
