@@ -3,7 +3,7 @@ pub mod thold_crypto;
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use threshold_crypto::Fr;
+use threshold_crypto::{Fr, IntoFr};
 use crate::error::*;
 
 #[derive(Clone, Eq, PartialEq)]
@@ -15,7 +15,6 @@ pub struct PublicKeyPart {
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PrivateKeyPart {
     key: thold_crypto::PrivateKeyPart,
 }
@@ -36,7 +35,6 @@ pub struct PublicKey {
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PrivateKey {
     key: thold_crypto::PrivateKey,
 }
@@ -67,16 +65,18 @@ impl PublicKeySet {
     }
 
     pub fn verify(&self, msg: &[u8], sig: &Signature) -> Result<()> {
-        self.key.verify(msg, &sig.sig)
+        self.key.verify_combined_signature(msg, &sig.sig)?;
+
+        Ok(())
     }
 
-    pub fn combine_signatures(&self, sigs: &[(usize, PartialSignature)]) -> Result<Signature> {
-        let map = sigs.iter().map(|(id, sig)| &sig.sig).collect::<>();
+    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature>
+        where I: IntoIterator<Item=(T, &'a PartialSignature)>,
+              T: IntoFr {
+        let map = sigs.into_iter().map(|(id, sig)| (id, &sig.sig)).collect::<Vec<_>>();
 
         Ok(Signature { sig: self.key.combine_signatures(map)? })
     }
-
-
 }
 
 impl PublicKeyPart {

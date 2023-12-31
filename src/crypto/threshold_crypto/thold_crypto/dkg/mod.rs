@@ -8,6 +8,7 @@ use thiserror::Error;
 use threshold_crypto::{Fr, G1Affine};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
+use serde::Serializer;
 use threshold_crypto::ff::Field;
 use threshold_crypto::group::CurveAffine;
 use threshold_crypto::poly::{BivarCommitment, BivarPoly, Poly};
@@ -39,7 +40,7 @@ pub struct DealerPart {
     // The author of the Dealer Part
     author: usize,
     commitment: BivarCommitment,
-    share_values: Vec<Poly>,
+    share_values: Vec<Vec<u8>>,
 }
 
 /// Acknowledgement sent by a node after receiving a dealer part
@@ -52,19 +53,19 @@ pub struct DealerPart {
 pub struct Ack {
     author: usize,
     part_being_acked: usize,
-    commitments: Vec<Fr>,
+    commitments: Vec<Vec<u8>>,
 }
 
 /// The parameter sent by a dealer to a specific node.
 /// This is derived from [DealerPart] and is meant to be delivered to a specific node.
 #[derive(Clone)]
-pub struct DirectedDealerPart(BivarCommitment, Poly);
+pub struct DirectedDealerPart(BivarCommitment, Vec<u8>);
 
 /// A directed acknowledgement sent by a dealer to a specific node.
 /// This is derived from [Ack] and is meant to be delivered to a specific node.
 /// Analogous to [DirectedDealerPart]
 #[derive(Clone)]
-pub struct DirectedAck(usize, Fr);
+pub struct DirectedAck(usize, Vec<u8>);
 
 /// A complaint, sent by a given node about another node, which is suspected to be faulty
 #[derive(Clone)]
@@ -105,7 +106,9 @@ pub struct DistributedKeyGenerator {
 
 impl DistributedKeyGenerator {
     pub fn new(params: DKGParams, our_id: usize) -> Result<(Self, DealerPart)> {
-        let mut rng = rand::rngs::OsRng::new()?;
+
+        let mut rng = rand::rngs::OsRng::default();
+
         let my_gen = BivarPoly::random(params.faulty_nodes(), &mut rng);
 
         let my_part = DealerPart {
@@ -113,6 +116,7 @@ impl DistributedKeyGenerator {
             commitment: my_gen.commitment(),
             share_values: (1..=params.dealers())
                 .map(|i| my_gen.row(i))
+                .map(|row| bincode::serialize(&row).unwrap())
                 .collect(),
         };
 
@@ -142,7 +146,9 @@ impl DistributedKeyGenerator {
         for node in 1..=self.params.dealers() {
             let node = row.evaluate(node);
 
-            values.push(node);
+            let serialized = bincode::serialize(&FieldWrap(node))?;
+
+            values.push(serialized);
         }
 
         Ok(Ack {
@@ -221,9 +227,7 @@ impl DistributedKeyGenerator {
         // Get the row that is meant for us
         let row = rows.swap_remove(self.our_id - 1);
 
-        let row_ser = bincode::serialize(&row).unwrap();
-
-        let row: Poly = bincode::deserialize(&row_ser).unwrap();
+        let row: Poly = bincode::deserialize(&row)?;
 
         eprintln!("Dealer part {}: Received row from dealer {}: {:?} in ID {}", self.our_id, sender, row, self.our_id - 1);
 
@@ -261,9 +265,7 @@ impl DistributedKeyGenerator {
 
         let received_value = commitments.swap_remove(self.our_id - 1);
 
-        let val_ser = bincode::serialize(&FieldWrap(received_value)).unwrap();
-
-        let received_value = bincode::deserialize::<FieldWrap<Fr>>(&val_ser).unwrap().into_inner();
+        let received_value = bincode::deserialize::<FieldWrap<Fr>>(&received_value).unwrap().into_inner();
 
         eprintln!("Dealer ack {}: Received ack from dealer {}: {:?} in ID {}", self.our_id, sender, received_value, self.our_id - 1);
 
@@ -333,6 +335,15 @@ impl DealerPart {
         }
 
         directed_dealer_parts
+    }
+}
+
+impl DKGParams {
+    pub fn new(dealers: usize, faulty_nodes: usize) -> Self {
+        Self {
+            dealers,
+            faulty_nodes,
+        }
     }
 }
 

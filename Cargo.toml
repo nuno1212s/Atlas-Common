@@ -100,7 +100,7 @@ thread_local = "1.1.4"
 socket2 = "0.4"
 event-listener = "4.0.0"
 linked-hash-map = "0.5"
-rand = { version = "0.6.5" }
+rand = { version = "0.7" }
 
 mio = { version = "0.8", features = ["os-poll", "net"] }
 cthpool = { git = "https://github.com/sug0/cthpool", optional = true }
