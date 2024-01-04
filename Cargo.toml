@@ -25,7 +25,8 @@ default = [
     "crypto_signature_ring_ed25519",
     "crypto_hash_blake3_blake3",
     "collections_randomstate_fxhash",
-    "persistent_db_sled"
+    "persistent_db_sled",
+    "serialize_serde"
 ]
 
 #Async socket alternatives, choose one
@@ -83,6 +84,7 @@ persistent_db_sled = ["sled"]
 persistent_db_disabled = []
 
 serialize_serde = ["serde", "serde-big-array"]
+serialize_capnp = []
 
 [dependencies]
 anyhow = "1.0.75"

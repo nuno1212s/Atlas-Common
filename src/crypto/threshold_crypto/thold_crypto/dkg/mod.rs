@@ -34,9 +34,10 @@ pub struct DKGParams {
 /// The vector of polynomials are the private key shares, generated from the bivar polynomial
 ///
 /// These messages must be delivered in order to the other nodes
-#[derive(Clone)]
+#[derive(Clone, CopyGetters)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct DealerPart {
+    #[get_copy = "pub"]
     // The author of the Dealer Part
     author: usize,
     commitment: BivarCommitment,
