@@ -11,7 +11,7 @@ pub trait SerType: for<'a> Deserialize<'a> + Serialize + Send + Clone {}
 pub trait SerType: Send + Clone {}
 
 /// Automatically implement the SerType trait for all types that implement the serde traits
-/// which since we do not require any function impls is the only thing we require
+/// which, since we do not require any function impls, is the only thing we require
 #[cfg(feature = "serialize_serde")]
 impl<T> SerType for T where T: for<'a> Deserialize<'a> + Serialize + Send + Clone {}
 
