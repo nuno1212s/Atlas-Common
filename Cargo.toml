@@ -87,8 +87,8 @@ serialize_serde = ["serde", "serde-big-array"]
 serialize_capnp = []
 
 [dependencies]
-anyhow = "1.0.75"
-thiserror = "1.0.50"
+anyhow = "1.0"
+thiserror = "1.0"
 getset = "0.1.2"
 
 either = "1.8.1"
