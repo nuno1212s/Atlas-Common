@@ -90,6 +90,7 @@ serialize_capnp = []
 anyhow = "1.0"
 thiserror = "1.0"
 getset = "0.1.2"
+strum = { version = "0.25", features = ["derive"] }
 
 either = "1.8.1"
 tokio-rustls = "0.24.0"

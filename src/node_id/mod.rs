@@ -1,5 +1,6 @@
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
+use strum::EnumIter;
 
 /// A `NodeId` represents the id of a process in the BFT system.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -7,7 +8,7 @@ use serde::{Serialize, Deserialize};
 #[repr(transparent)]
 pub struct NodeId(pub u32);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, EnumIter)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub enum NodeType {
     Replica,
