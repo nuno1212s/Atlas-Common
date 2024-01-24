@@ -8,7 +8,7 @@ use strum::EnumIter;
 #[repr(transparent)]
 pub struct NodeId(pub u32);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, EnumIter)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, PartialOrd, Ord, EnumIter)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub enum NodeType {
     Replica,
