@@ -3,13 +3,14 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 use anyhow::Error;
 
 use futures::future::FusedFuture;
 use futures::TryFutureExt;
-use log::error;
+use log::{error, warn};
 use thiserror::Error;
 use crate::Err;
 use crate::error::*;
@@ -147,6 +148,7 @@ pub fn new_bounded_async<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelAsyncRx<
 Sync channels
  */
 pub struct ChannelSyncRx<T> {
+    name: Option<Arc<str>>,
     #[cfg(feature = "channel_sync_crossbeam")]
     inner: crossbeam::ChannelSyncRx<T>,
     #[cfg(feature = "channel_sync_flume")]
@@ -154,7 +156,7 @@ pub struct ChannelSyncRx<T> {
 }
 
 pub struct ChannelSyncTx<T> {
-    channel_identifier: Option<String>,
+    channel_identifier: Option<Arc<str>>,
     #[cfg(feature = "channel_sync_crossbeam")]
     inner: crossbeam::ChannelSyncTx<T>,
     #[cfg(feature = "channel_sync_flume")]
@@ -180,6 +182,12 @@ impl<T> ChannelSyncRx<T> {
     #[inline]
     pub fn recv_timeout(&self, timeout: Duration) -> std::result::Result<T, TryRecvError> {
         self.inner.recv_timeout(timeout)
+    }
+}
+
+impl<T> Drop for ChannelSyncRx<T> {
+    fn drop(&mut self) {
+        warn!("Dropping channel receiver {:?}", self.name)
     }
 }
 
@@ -255,47 +263,48 @@ impl<T> Clone for ChannelSyncTx<T> {
 impl<T> Clone for ChannelSyncRx<T> {
     fn clone(&self) -> Self {
         ChannelSyncRx {
-            inner: self.inner.clone()
+            name: self.name.clone(),
+            inner: self.inner.clone(),
         }
     }
 }
 
 #[inline]
 pub fn new_bounded_sync<T>(bound: usize, name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-    let name = name.map(|string| String::from(string));
+    let name = name.map(|string| Arc::from(string));
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {
         let (tx, rx) = crossbeam::new_bounded(bound);
 
-        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name.clone(), inner: rx })
     }
 
     #[cfg(feature = "channel_sync_flume")]
     {
         let (tx, rx) = flume_mpmc::new_bounded(bound);
 
-        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name, inner: rx })
     }
 }
 
 
 #[inline]
 pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-    let name = name.map(|string| String::from(string));
+    let name = name.map(|string| Arc::from(string));
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {
         let (tx, rx) = crossbeam::new_unbounded();
 
-        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name.clone(), inner: rx })
     }
 
     #[cfg(feature = "channel_sync_flume")]
     {
         let (tx, rx) = flume_mpmc::new_unbounded();
 
-        (ChannelSyncTx { channel_identifier: name, inner: tx }, ChannelSyncRx { inner: rx })
+        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name.clone(), inner: rx })
     }
 }
 
@@ -567,7 +576,7 @@ pub enum TrySendError {
 
 #[derive(Error)]
 pub enum SendReturnError<T> {
-    #[error("Failed to send message")]
+    #[error("Failed to send message, channel disconnected")]
     FailedToSend(T)
 }
 
