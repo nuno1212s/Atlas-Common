@@ -27,8 +27,12 @@ pub enum SignError {
 
 #[derive(Error, Debug)]
 pub enum VerifyError {
-    #[error("Failed too verify signature {0:?}")]
-    VerificationError(String),
+    #[error("Failed too verify signature {0:?}, signature is {1:x?}")]
+    VerificationError(String, Vec<u8>),
+    #[error("Invalid signature, cannot be blank")]
+    BlankSignature,
+    #[error("Invalid signature, length is wrong {0}")]
+    SignatureLen(usize),
 }
 
 /// A `KeyPair` holds both the private and public key components
@@ -126,7 +130,7 @@ impl<'a> From<PublicKeyRef<'a>> for PublicKey {
 
 impl<'a> PublicKeyRef<'a> {
     /// Check the `verify` documentation for `PublicKey`.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
         self.inner.verify(message, &signature.inner)
     }
 }
@@ -150,7 +154,7 @@ impl PublicKey {
     ///
     /// Forged signatures can be verified successfully, so a good public key
     /// crypto algorithm and key size should be picked.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
         self.inner.verify(message, &signature.inner)
     }
 }
