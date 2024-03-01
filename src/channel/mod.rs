@@ -264,8 +264,8 @@ impl<T> Clone for ChannelSyncRx<T> {
 }
 
 #[inline]
-pub fn new_bounded_sync<T>(bound: usize, name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-    let name = name.map(|string| Arc::from(string));
+pub fn new_bounded_sync<T>(bound: usize, name: Option<impl Into<String>>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+    let name = name.map(|string| Arc::from(string.into()));
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {
