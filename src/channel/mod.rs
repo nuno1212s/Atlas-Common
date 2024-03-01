@@ -185,12 +185,6 @@ impl<T> ChannelSyncRx<T> {
     }
 }
 
-impl<T> Drop for ChannelSyncRx<T> {
-    fn drop(&mut self) {
-        warn!("Dropping channel receiver {:?}", self.name)
-    }
-}
-
 impl<T> ChannelSyncTx<T> {
     #[inline]
     pub fn len(&self) -> usize {
