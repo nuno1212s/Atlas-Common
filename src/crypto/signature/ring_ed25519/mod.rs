@@ -106,15 +106,17 @@ impl PublicKey {
         PublicKey { pk }
     }
 
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
-        match self.pk.verify(message, signature.as_ref()) {
-            Ok(_) => {
-                Ok(())
-            }
-            Err(err) => {
-                Err!(VerifyError::VerificationError(format!("{}", err)))
-            }
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
+        
+        if signature.as_ref().len() != Signature::LENGTH {
+            return Err!(VerifyError::SignatureLen(signature.as_ref().len()));
+        } else if signature.as_ref() == &[0; Signature::LENGTH][..] {
+            return Err!(VerifyError::BlankSignature);
         }
+        
+        self.pk.verify(message, signature.as_ref()).map_err(|e| VerifyError::VerificationError(format!("{:?}", e), signature.0.to_vec()))?;
+        
+        Ok(())
     }
 }
 
@@ -151,9 +153,9 @@ mod tests {
         let k = KeyPair::from_bytes(&[0; 32][..]).expect("Invalid key bytes");
 
         let message = b"test message";
-        let signature = k.sign(message)
+        let signature = k.0.sign(message)
             .expect("Signature failed");
-        k
+        k.0
             .public_key()
             .verify(message, &signature)
             .expect("Verify failed");

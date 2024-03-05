@@ -1,8 +1,11 @@
 //! Public key cryptographic operations.
 
+use std::cmp;
 use std::fmt::{Debug, Formatter};
 #[cfg(feature = "serialize_serde")]
 use serde::{Serialize, Deserialize};
+use serde::{Deserializer, Serializer};
+use serde::de::{Error, SeqAccess};
 use thiserror::Error;
 
 use crate::error::*;
@@ -24,8 +27,12 @@ pub enum SignError {
 
 #[derive(Error, Debug)]
 pub enum VerifyError {
-    #[error("Failed too verify signature {0:?}")]
-    VerificationError(String),
+    #[error("Failed too verify signature {0:?}, signature is {1:x?}")]
+    VerificationError(String, Vec<u8>),
+    #[error("Invalid signature, cannot be blank")]
+    BlankSignature,
+    #[error("Invalid signature, length is wrong {0}")]
+    SignatureLen(usize),
 }
 
 /// A `KeyPair` holds both the private and public key components
@@ -123,7 +130,7 @@ impl<'a> From<PublicKeyRef<'a>> for PublicKey {
 
 impl<'a> PublicKeyRef<'a> {
     /// Check the `verify` documentation for `PublicKey`.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
         self.inner.verify(message, &signature.inner)
     }
 }
@@ -147,7 +154,7 @@ impl PublicKey {
     ///
     /// Forged signatures can be verified successfully, so a good public key
     /// crypto algorithm and key size should be picked.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<()> {
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
         self.inner.verify(message, &signature.inner)
     }
 }
@@ -178,6 +185,73 @@ impl Debug for Signature {
 impl AsRef<[u8]> for Signature {
     fn as_ref(&self) -> &[u8] {
         self.inner.as_ref()
+    }
+}
+
+impl Serialize for PublicKey {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_bytes(&self.pk_bytes)
+    }
+}
+
+impl<'de> Deserialize<'de> for PublicKey {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error> where D: Deserializer<'de> {
+
+        struct ByteBufVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ByteBufVisitor {
+            type Value = Vec<u8>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a byte array")
+            }
+
+            fn visit_seq<V>(self, mut visitor: V) -> std::result::Result<Vec<u8>, V::Error>
+                where
+                    V: SeqAccess<'de>,
+            {
+                let len = cmp::min(visitor.size_hint().unwrap_or(0), 4096);
+                let mut bytes = Vec::with_capacity(len);
+
+                while let Some(b) = visitor.next_element()? {
+                    bytes.push(b);
+                }
+
+                Ok(bytes)
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> std::result::Result<Vec<u8>, E>
+                where
+                    E: Error,
+            {
+                Ok(v.to_vec())
+            }
+
+            fn visit_byte_buf<E>(self, v: Vec<u8>) -> std::result::Result<Vec<u8>, E>
+                where
+                    E: Error,
+            {
+                Ok(v)
+            }
+        }
+
+        let vec = deserializer.deserialize_bytes(ByteBufVisitor)?;
+
+        match Self::from_bytes(vec.as_slice()) {
+            Ok(pk) => {
+                Ok(pk)
+            }
+            Err(err) => {
+                Err(serde::de::Error::custom(err))
+            }
+        }
+    }
+
+}
+
+impl Debug for PublicKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x?}", self.pk_bytes.chunks(4).next().unwrap())
     }
 }
 

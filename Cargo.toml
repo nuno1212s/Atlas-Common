@@ -25,7 +25,8 @@ default = [
     "crypto_signature_ring_ed25519",
     "crypto_hash_blake3_blake3",
     "collections_randomstate_fxhash",
-    "persistent_db_rocksdb"
+    "persistent_db_sled",
+    "serialize_serde"
 ]
 
 #Async socket alternatives, choose one
@@ -38,11 +39,11 @@ async_runtime_tokio = ["tokio"]
 async_runtime_async_std = ["async-std"]
 
 #Crypto alternatives, choose one
-crypto_hash_ring_sha2 = ["ring"]
+crypto_hash_ring_sha2 = []
 crypto_hash_blake3_blake3 = ["blake3"]
 
 #Signature alternatives, choose one
-crypto_signature_ring_ed25519 = ["ring"]
+crypto_signature_ring_ed25519 = []
 
 #Threadpool alternatives, choose one
 threadpool_crossbeam = ["threadpool-crossbeam-channel"]
@@ -79,40 +80,45 @@ collections_randomstate_twox_hash = ["twox-hash"]
 # If no type of this category is presented, it will default to disabled,
 # But the default features do include rocksdb
 persistent_db_rocksdb = ["rocksdb"]
+persistent_db_sled = ["sled"]
 persistent_db_disabled = []
 
 serialize_serde = ["serde", "serde-big-array"]
+serialize_capnp = []
 
 [dependencies]
-anyhow = "1.0.75"
-thiserror = "1.0.50"
+anyhow = "1.0"
+thiserror = "1.0"
+getset = "0.1.2"
+strum = { version = "0.25", features = ["derive"] }
 
 either = "1.8.1"
 tokio-rustls = "0.24.0"
 rustls = "0.21.0"
 futures = "0.3.26"
-fastrand = "1.7.0"
+fastrand = "2.0.1"
 webpki = "0.22.0"
 dashmap = "5.1.0"
 thread_local = "1.1.4"
 socket2 = "0.4"
-event-listener = "2.5.2"
+event-listener = "4.0.0"
 linked-hash-map = "0.5"
-rand_core= { version = "0.6", features = ["getrandom"] }
+rand = { version = "0.7" }
 
-mio = {version =  "0.8", features = ["os-poll", "net"] }
+mio = { version = "0.8", features = ["os-poll", "net"] }
+cthpool = { git = "https://github.com/sug0/cthpool", optional = true }
 async-std = { version = "1", optional = true }
 tokio = { version = "1.25.0", features = ["full"], optional = true }
 tokio-util = { version = "0.7.1", features = ["compat"], optional = true }
 tokio-metrics = { version = "0.1.0", optional = true }
-ring = { version = "0.16", optional = true }
 threadpool-crossbeam-channel = { version = "1.8.0", optional = true }
 #async-semaphore = { version = "1", optional = true }
 
-serde = { version = "*", features = ["derive", "rc"], optional = true }
+serde = { version = "*", features = ["derive", "rc", "alloc", "std"], optional = true }
 serde-big-array = { version = "0.5.0", optional = true }
+bincode = "*"
 
-cthpool = { git = "https://github.com/sug0/cthpool", optional = true }
+ring = { version = "0.16" }
 rayon = { version = "1.5.3", optional = true }
 rio = { version = "0.9", optional = true }
 blake3 = { version = "1.3.3", optional = true }
@@ -126,6 +132,7 @@ dsrust = { version = "0.1.9", git = "https://github.com/nuno1212s/DSRust", optio
 crossbeam-channel = { version = "0.5.2", optional = true }
 crossbeam-skiplist = "0.1.1"
 rocksdb = { version = "0.20.1", optional = true }
+sled = { version = "0.34.7", optional = true }
 oneshot = "0.1.5"
 
 log = "0.4.17"
@@ -134,4 +141,6 @@ log = "0.4.17"
 
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
-threshold_crypto = { version = "0.4", git = "https://github.com/poanetwork/threshold_crypto" }
+threshold_crypto = { version = "0.4.0", git = "https://github.com/poanetwork/threshold_crypto" }
+frost-ed25519 = { version = "0.7.0", features = ["serde"] }
+frost-core = { version = "0.7.0", features = ["serde"] }

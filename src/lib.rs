@@ -46,6 +46,7 @@ pub mod config_utils;
 pub mod peer_addr;
 pub mod system_params;
 pub mod maybe_vec;
+pub mod serialization_helper;
 
 
 static INITIALIZED: Flag = Flag::new();

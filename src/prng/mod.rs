@@ -5,7 +5,8 @@
 //! C code, released to the public domain.
 
 use std::cell::RefCell;
-use rand_core::{RngCore, OsRng};
+use rand::{RngCore};
+use rand::rngs::OsRng;
 use thread_local::ThreadLocal;
 
 /// This type is a container for the 256-bit state of `xoshiro256**`.
@@ -40,7 +41,8 @@ impl State {
     /// Creates a new PRNG from a cryptographically secure random seed.
     pub fn new() -> Self {
         let mut seed = [0; 32];
-        OsRng.fill_bytes(&mut seed);
+
+        OsRng::default().fill_bytes(&mut seed);
 
         let s = unsafe { std::mem::transmute(seed) };
         let mut s = State { s };
