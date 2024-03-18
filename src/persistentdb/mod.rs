@@ -22,7 +22,7 @@ pub struct KVDB {
     inner: Arc<rocksdb::RocksKVDB>,
     //TODO: This should be an else, not just not rocksdb
     #[cfg(not(feature = "persistent_db_rocksdb"))]
-    inner: disabled::DisabledKV
+    inner: disabled::DisabledKV,
 }
 
 impl KVDB {
@@ -32,12 +32,15 @@ impl KVDB {
     {
         let prefixes_cpy = prefixes.clone();
 
-
         let inner = {
             #[cfg(feature = "persistent_db_rocksdb")]
-            {Arc::new(rocksdb::RocksKVDB::new(db_path, prefixes_cpy)?)}
+            {
+                Arc::new(rocksdb::RocksKVDB::new(db_path, prefixes_cpy)?)
+            }
             #[cfg(not(feature = "persistent_db_rocksdb"))]
-            {disabled::DisabledKV::new(db_path, prefixes_cpy)?}
+            {
+                disabled::DisabledKV::new(db_path, prefixes_cpy)?
+            }
         };
 
         Ok(Self {

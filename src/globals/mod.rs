@@ -1,10 +1,13 @@
 //! Abstractions to deal with global variables.
 
-use std::{sync::atomic::{AtomicBool, Ordering}, ops::Deref};
+use std::{
+    ops::Deref,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
+use crate::ordering::{Orderable, SeqNo};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use crate::ordering::{Orderable, SeqNo};
 
 /// A `Flag` is used to check for the initialization of a global value.
 pub struct Flag(AtomicBool);
@@ -15,13 +18,13 @@ impl Flag {
         Self(AtomicBool::new(false))
     }
 
-    /// Sets the global variable as initialized. 
+    /// Sets the global variable as initialized.
     #[inline]
     pub fn set(&'static self) {
         self.0.store(true, Ordering::Release);
     }
 
-    /// Sets the global variable as dropped. 
+    /// Sets the global variable as dropped.
     #[inline]
     pub fn unset(&'static self) {
         self.0.store(false, Ordering::Release);
@@ -87,12 +90,13 @@ impl<T: Sync + 'static> Global<T> {
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 #[derive(Debug)]
 pub struct ReadOnly<T> {
-
-    value: T
-
+    value: T,
 }
 
-impl<T> Orderable for ReadOnly<T> where T: Orderable {
+impl<T> Orderable for ReadOnly<T>
+where
+    T: Orderable,
+{
     fn sequence_number(&self) -> SeqNo {
         self.value.sequence_number()
     }
@@ -101,7 +105,6 @@ impl<T> Orderable for ReadOnly<T> where T: Orderable {
 unsafe impl<T> Sync for ReadOnly<T> {}
 
 impl<T> ReadOnly<T> {
-
     pub fn new(value: T) -> Self {
         Self { value }
     }
@@ -109,7 +112,6 @@ impl<T> ReadOnly<T> {
     pub fn into_inner(self) -> T {
         self.value
     }
-
 }
 
 impl<T> From<T> for ReadOnly<T> {

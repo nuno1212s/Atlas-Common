@@ -1,11 +1,11 @@
 //! Public key cryptographic operations.
 
+use serde::de::{Error, SeqAccess};
+#[cfg(feature = "serialize_serde")]
+use serde::{Deserialize, Serialize};
+use serde::{Deserializer, Serializer};
 use std::cmp;
 use std::fmt::{Debug, Formatter};
-#[cfg(feature = "serialize_serde")]
-use serde::{Serialize, Deserialize};
-use serde::{Deserializer, Serializer};
-use serde::de::{Error, SeqAccess};
 use thiserror::Error;
 
 use crate::error::*;
@@ -81,19 +81,29 @@ impl KeyPair {
     pub fn from_pkcs8(bytes: &[u8]) -> Result<Self> {
         let (inner, public_key) = {
             #[cfg(feature = "crypto_signature_ring_ed25519")]
-            { ring_ed25519::KeyPair::from_pkcs8(bytes)? }
+            {
+                ring_ed25519::KeyPair::from_pkcs8(bytes)?
+            }
         };
 
-        Ok(KeyPair { inner, pub_key_bytes: public_key })
+        Ok(KeyPair {
+            inner,
+            pub_key_bytes: public_key,
+        })
     }
 
     /// Constructs a `KeyPair` from a byte buffer of appropriate size.
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         let (inner, pk_bytes) = {
             #[cfg(feature = "crypto_signature_ring_ed25519")]
-            { ring_ed25519::KeyPair::from_bytes(raw_bytes)? }
+            {
+                ring_ed25519::KeyPair::from_bytes(raw_bytes)?
+            }
         };
-        Ok(KeyPair { inner, pub_key_bytes: pk_bytes })
+        Ok(KeyPair {
+            inner,
+            pub_key_bytes: pk_bytes,
+        })
     }
 
     /// Returns a reference to the public component of this `KeyPair`.
@@ -102,7 +112,10 @@ impl KeyPair {
     /// yielding a `PublicKey`.
     pub fn public_key<'a>(&'a self) -> PublicKeyRef<'a> {
         let inner = self.inner.public_key();
-        PublicKeyRef { inner, byte_repr: &self.pub_key_bytes }
+        PublicKeyRef {
+            inner,
+            byte_repr: &self.pub_key_bytes,
+        }
     }
 
     /// Returns a reference to the public key bytes of this `KeyPair`.
@@ -124,13 +137,20 @@ impl KeyPair {
 impl<'a> From<PublicKeyRef<'a>> for PublicKey {
     fn from(pk: PublicKeyRef<'a>) -> PublicKey {
         let inner = pk.inner.clone();
-        PublicKey { inner, pk_bytes: pk.byte_repr.clone() }
+        PublicKey {
+            inner,
+            pk_bytes: pk.byte_repr.clone(),
+        }
     }
 }
 
 impl<'a> PublicKeyRef<'a> {
     /// Check the `verify` documentation for `PublicKey`.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
+    pub fn verify(
+        &self,
+        message: &[u8],
+        signature: &Signature,
+    ) -> std::result::Result<(), VerifyError> {
         self.inner.verify(message, &signature.inner)
     }
 }
@@ -140,10 +160,15 @@ impl PublicKey {
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         let inner = {
             #[cfg(feature = "crypto_signature_ring_ed25519")]
-            { ring_ed25519::PublicKey::from_bytes(raw_bytes)? }
+            {
+                ring_ed25519::PublicKey::from_bytes(raw_bytes)?
+            }
         };
 
-        Ok(PublicKey { inner, pk_bytes: raw_bytes.to_vec() })
+        Ok(PublicKey {
+            inner,
+            pk_bytes: raw_bytes.to_vec(),
+        })
     }
 
     pub fn pk_bytes(&self) -> &[u8] {
@@ -154,7 +179,11 @@ impl PublicKey {
     ///
     /// Forged signatures can be verified successfully, so a good public key
     /// crypto algorithm and key size should be picked.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
+    pub fn verify(
+        &self,
+        message: &[u8],
+        signature: &Signature,
+    ) -> std::result::Result<(), VerifyError> {
         self.inner.verify(message, &signature.inner)
     }
 }
@@ -163,14 +192,18 @@ impl Signature {
     /// Length in bytes required to represent a `Signature` in memory.
     pub const LENGTH: usize = {
         #[cfg(feature = "crypto_signature_ring_ed25519")]
-        { ring_ed25519::Signature::LENGTH }
+        {
+            ring_ed25519::Signature::LENGTH
+        }
     };
 
     /// Constructs a `Signature` from a byte buffer of appropriate size.
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         let inner = {
             #[cfg(feature = "crypto_signature_ring_ed25519")]
-            { ring_ed25519::Signature::from_bytes(raw_bytes)? }
+            {
+                ring_ed25519::Signature::from_bytes(raw_bytes)?
+            }
         };
         Ok(Signature { inner })
     }
@@ -189,14 +222,19 @@ impl AsRef<[u8]> for Signature {
 }
 
 impl Serialize for PublicKey {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> where S: Serializer {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         serializer.serialize_bytes(&self.pk_bytes)
     }
 }
 
 impl<'de> Deserialize<'de> for PublicKey {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error> where D: Deserializer<'de> {
-
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         struct ByteBufVisitor;
 
         impl<'de> serde::de::Visitor<'de> for ByteBufVisitor {
@@ -207,8 +245,8 @@ impl<'de> Deserialize<'de> for PublicKey {
             }
 
             fn visit_seq<V>(self, mut visitor: V) -> std::result::Result<Vec<u8>, V::Error>
-                where
-                    V: SeqAccess<'de>,
+            where
+                V: SeqAccess<'de>,
             {
                 let len = cmp::min(visitor.size_hint().unwrap_or(0), 4096);
                 let mut bytes = Vec::with_capacity(len);
@@ -221,15 +259,15 @@ impl<'de> Deserialize<'de> for PublicKey {
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> std::result::Result<Vec<u8>, E>
-                where
-                    E: Error,
+            where
+                E: Error,
             {
                 Ok(v.to_vec())
             }
 
             fn visit_byte_buf<E>(self, v: Vec<u8>) -> std::result::Result<Vec<u8>, E>
-                where
-                    E: Error,
+            where
+                E: Error,
             {
                 Ok(v)
             }
@@ -238,15 +276,10 @@ impl<'de> Deserialize<'de> for PublicKey {
         let vec = deserializer.deserialize_bytes(ByteBufVisitor)?;
 
         match Self::from_bytes(vec.as_slice()) {
-            Ok(pk) => {
-                Ok(pk)
-            }
-            Err(err) => {
-                Err(serde::de::Error::custom(err))
-            }
+            Ok(pk) => Ok(pk),
+            Err(err) => Err(serde::de::Error::custom(err)),
         }
     }
-
 }
 
 impl Debug for PublicKey {

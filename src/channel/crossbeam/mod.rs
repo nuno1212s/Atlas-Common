@@ -1,9 +1,9 @@
+use crate::channel::{RecvError, SendReturnError, TryRecvError, TrySendReturnError};
+use crate::error::*;
+use crate::Err;
+use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
 use std::ops::Deref;
 use std::time::Duration;
-use crate::error::*;
-use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
-use crate::channel::{RecvError, SendReturnError, TryRecvError, TrySendReturnError};
-use crate::Err;
 
 pub struct ChannelSyncRx<T> {
     inner: crossbeam_channel::Receiver<T>,
@@ -16,7 +16,7 @@ pub struct ChannelSyncTx<T> {
 impl<T> Clone for ChannelSyncTx<T> {
     fn clone(&self) -> Self {
         ChannelSyncTx {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -24,7 +24,7 @@ impl<T> Clone for ChannelSyncTx<T> {
 impl<T> Clone for ChannelSyncRx<T> {
     fn clone(&self) -> Self {
         ChannelSyncRx {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -33,48 +33,38 @@ impl<T> ChannelSyncTx<T> {
     #[inline]
     pub fn send(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send(value) {
-            Ok(_) => { Ok(()) }
-            Err(err) => {
-                Err(SendReturnError::FailedToSend(err.into_inner()))
-            }
+            Ok(_) => Ok(()),
+            Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),
         }
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendReturnError<T>> {
+    pub fn send_timeout(
+        &self,
+        value: T,
+        timeout: Duration,
+    ) -> std::result::Result<(), TrySendReturnError<T>> {
         match self.inner.send_timeout(value, timeout) {
-            Ok(_) => {
-                Ok(())
-            }
-            Err(err) => {
-                match err {
-                    SendTimeoutError::Timeout(t) => {
-                        Err(TrySendReturnError::Timeout(t))
-                    }
-                    SendTimeoutError::Disconnected(t) => {
-                        Err(TrySendReturnError::Disconnected(t))
-                    }
-                }
-            }
+            Ok(_) => Ok(()),
+            Err(err) => match err {
+                SendTimeoutError::Timeout(t) => Err(TrySendReturnError::Timeout(t)),
+                SendTimeoutError::Disconnected(t) => Err(TrySendReturnError::Disconnected(t)),
+            },
         }
     }
 
     #[inline]
     pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendReturnError<T>> {
         match self.inner.try_send(value) {
-            Ok(_) => {
-                Ok(())
-            }
-            Err(err) => {
-                match err {
-                    crossbeam_channel::TrySendError::Full(value) => {
-                        Err(TrySendReturnError::Full(value))
-                    }
-                    crossbeam_channel::TrySendError::Disconnected(value) => {
-                        Err(TrySendReturnError::Disconnected(value))
-                    }
+            Ok(_) => Ok(()),
+            Err(err) => match err {
+                crossbeam_channel::TrySendError::Full(value) => {
+                    Err(TrySendReturnError::Full(value))
                 }
-            }
+                crossbeam_channel::TrySendError::Disconnected(value) => {
+                    Err(TrySendReturnError::Disconnected(value))
+                }
+            },
         }
     }
 }
@@ -83,28 +73,18 @@ impl<T> ChannelSyncRx<T> {
     #[inline]
     pub fn try_recv(&self) -> std::result::Result<T, TryRecvError> {
         match self.inner.try_recv() {
-            Ok(res) => {
-                Ok(res)
-            }
-            Err(err) => {
-                match err {
-                    crossbeam_channel::TryRecvError::Empty => {
-                        Err(TryRecvError::ChannelEmpty)
-                    }
-                    crossbeam_channel::TryRecvError::Disconnected => {
-                        Err(TryRecvError::ChannelDc)
-                    }
-                }
-            }
+            Ok(res) => Ok(res),
+            Err(err) => match err {
+                crossbeam_channel::TryRecvError::Empty => Err(TryRecvError::ChannelEmpty),
+                crossbeam_channel::TryRecvError::Disconnected => Err(TryRecvError::ChannelDc),
+            },
         }
     }
 
     #[inline]
     pub fn recv(&self) -> Result<T> {
         match self.inner.recv() {
-            Ok(res) => {
-                Ok(res)
-            }
+            Ok(res) => Ok(res),
             Err(_err) => {
                 Err!(RecvError::ChannelDc)
             }
@@ -114,19 +94,15 @@ impl<T> ChannelSyncRx<T> {
     #[inline]
     pub fn recv_timeout(&self, timeout: Duration) -> std::result::Result<T, TryRecvError> {
         match self.inner.recv_timeout(timeout) {
-            Ok(result) => {
-                Ok(result)
-            }
-            Err(err) => {
-                match err {
-                    RecvTimeoutError::Timeout => {
-                        Err!(TryRecvError::Timeout)
-                    }
-                    RecvTimeoutError::Disconnected => {
-                        Err!(TryRecvError::ChannelDc)
-                    }
+            Ok(result) => Ok(result),
+            Err(err) => match err {
+                RecvTimeoutError::Timeout => {
+                    Err!(TryRecvError::Timeout)
                 }
-            }
+                RecvTimeoutError::Disconnected => {
+                    Err!(TryRecvError::ChannelDc)
+                }
+            },
         }
     }
 }

@@ -1,8 +1,8 @@
+use crate::ordering::Orderable;
 use std::collections::btree_set::{IntoIter, Iter};
 use std::collections::BTreeSet;
 use std::iter;
 use std::iter::Once;
-use crate::ordering::Orderable;
 
 #[derive(Clone, Debug)]
 pub enum MaybeOrderedVec<T> {
@@ -18,13 +18,18 @@ impl<T> MaybeOrderedVec<T> {
         }
     }
 
-    pub fn empty() -> Self { Self::None }
+    pub fn empty() -> Self {
+        Self::None
+    }
 
     pub fn from_one(member: T) -> Self {
         Self::One(member)
     }
 
-    pub fn from_many(objects: Vec<T>) -> Self where T: Ord {
+    pub fn from_many(objects: Vec<T>) -> Self
+    where
+        T: Ord,
+    {
         let mut result = BTreeSet::new();
 
         for obj in objects {
@@ -50,7 +55,7 @@ impl<T> MaybeOrderedVec<T> {
         match self {
             MaybeOrderedVec::None => true,
             MaybeOrderedVec::One(_) => false,
-            MaybeOrderedVec::Mult(set) => set.is_empty()
+            MaybeOrderedVec::Mult(set) => set.is_empty(),
         }
     }
 
@@ -58,7 +63,7 @@ impl<T> MaybeOrderedVec<T> {
         match self {
             MaybeOrderedVec::One(one) => ItRefMaybeVec::One(iter::once(one)),
             MaybeOrderedVec::Mult(vec) => ItRefMaybeVec::Mult(vec.iter()),
-            MaybeOrderedVec::None => ItRefMaybeVec::None
+            MaybeOrderedVec::None => ItRefMaybeVec::None,
         }
     }
 
@@ -66,7 +71,7 @@ impl<T> MaybeOrderedVec<T> {
         match self {
             MaybeOrderedVec::One(one) => ItMaybeVec::One(iter::once(one)),
             MaybeOrderedVec::Mult(vec) => ItMaybeVec::Mult(vec.into_iter()),
-            MaybeOrderedVec::None => ItMaybeVec::None
+            MaybeOrderedVec::None => ItMaybeVec::None,
         }
     }
 }
@@ -82,15 +87,9 @@ impl<T> Iterator for ItMaybeVec<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            ItMaybeVec::None => {
-                None
-            }
-            ItMaybeVec::One(iter) => {
-                iter.next()
-            }
-            ItMaybeVec::Mult(iter) => {
-                iter.next()
-            }
+            ItMaybeVec::None => None,
+            ItMaybeVec::One(iter) => iter.next(),
+            ItMaybeVec::Mult(iter) => iter.next(),
         }
     }
 }
@@ -115,19 +114,12 @@ impl<'a, T> Iterator for ItRefMaybeVec<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            ItRefMaybeVec::None => {
-                None
-            }
-            ItRefMaybeVec::One(iter) => {
-                iter.next()
-            }
-            ItRefMaybeVec::Mult(iter) => {
-                iter.next()
-            }
+            ItRefMaybeVec::None => None,
+            ItRefMaybeVec::One(iter) => iter.next(),
+            ItRefMaybeVec::Mult(iter) => iter.next(),
         }
     }
 }
-
 
 #[derive(Clone, Debug)]
 pub struct MaybeOrderedVecBuilder<T> {
@@ -142,18 +134,17 @@ impl<T> MaybeOrderedVecBuilder<T> {
     }
 
     pub fn from_existing(vec: MaybeOrderedVec<T>) -> Self {
-        Self {
-            current_value: vec,
-        }
+        Self { current_value: vec }
     }
 
-    pub fn push(&mut self, value: T) where T: Ord {
+    pub fn push(&mut self, value: T)
+    where
+        T: Ord,
+    {
         let current = std::mem::replace(&mut self.current_value, MaybeOrderedVec::None);
 
         self.current_value = match current {
-            MaybeOrderedVec::None => {
-                MaybeOrderedVec::One(value)
-            }
+            MaybeOrderedVec::None => MaybeOrderedVec::One(value),
             MaybeOrderedVec::One(curr_value) => {
                 let mut btree_set = BTreeSet::new();
 

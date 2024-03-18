@@ -49,8 +49,16 @@ pub fn hash_set_capacity<T>(cap: usize) -> HashSet<T> {
     HashSet::with_capacity_and_hasher(cap, Default::default())
 }
 
-pub fn concurrent_hash_map<K, V>() -> ConcurrentHashMap<K, V> where K: Eq + ::std::hash::Hash { dashmap::DashMap::with_hasher(Default::default()) }
+pub fn concurrent_hash_map<K, V>() -> ConcurrentHashMap<K, V>
+where
+    K: Eq + ::std::hash::Hash,
+{
+    dashmap::DashMap::with_hasher(Default::default())
+}
 
-pub fn concurrent_hash_map_with_capacity<K, V>(size: usize) -> ConcurrentHashMap<K, V> where K: Eq + ::std::hash::Hash {
+pub fn concurrent_hash_map_with_capacity<K, V>(size: usize) -> ConcurrentHashMap<K, V>
+where
+    K: Eq + ::std::hash::Hash,
+{
     DashMap::with_capacity_and_hasher(size, Default::default())
 }

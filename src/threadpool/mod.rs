@@ -1,4 +1,4 @@
-//! A thread pool abstraction over a range of other crates. 
+//! A thread pool abstraction over a range of other crates.
 
 #[cfg(feature = "threadpool_crossbeam")]
 mod crossbeam;
@@ -9,8 +9,8 @@ mod cthpool;
 #[cfg(feature = "threadpool_rayon")]
 mod rayon;
 
-use crate::globals::Global;
 use crate::error::*;
+use crate::globals::Global;
 
 /// A thread pool type, used to run intensive CPU tasks.
 ///
@@ -47,15 +47,21 @@ impl Builder {
     pub fn new() -> Builder {
         let inner = {
             #[cfg(feature = "threadpool_crossbeam")]
-            { crossbeam::Builder::new() }
+            {
+                crossbeam::Builder::new()
+            }
 
             #[cfg(feature = "threadpool_cthpool")]
-            { cthpool::Builder::new() }
+            {
+                cthpool::Builder::new()
+            }
 
             #[cfg(feature = "threadpool_rayon")]
-            { rayon::Builder::new() }
+            {
+                rayon::Builder::new()
+            }
         };
-        Builder { inner}
+        Builder { inner }
     }
     /// Returns the handle to a new thread pool.
     pub fn build(self) -> ThreadPool {
@@ -64,7 +70,6 @@ impl Builder {
         let thread_pool = ThreadPool { inner };
 
         thread_pool
-
     }
 
     /// Configures the number of threads used by the thread pool.
@@ -105,19 +110,17 @@ static mut POOL: Global<ThreadPool> = Global::new();
 macro_rules! pool {
     () => {
         match unsafe { POOL.get() } {
-	        Some(ref pool) => pool,
+            Some(ref pool) => pool,
             None => panic!("Client thread pool wasn't initialized"),
         }
-    }
+    };
 }
 
 /// This function initializes the thread pools.
 ///
 /// It should be called once before the core protocol starts executing.
 pub unsafe fn init(num_threads: usize) -> Result<()> {
-    let replica_pool = Builder::new()
-        .num_threads(num_threads)
-        .build();
+    let replica_pool = Builder::new().num_threads(num_threads).build();
 
     POOL.set(replica_pool);
     Ok(())

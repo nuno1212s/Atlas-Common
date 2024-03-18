@@ -1,5 +1,5 @@
-use std::path::Path;
 use crate::error::*;
+use std::path::Path;
 
 #[derive(Clone)]
 pub(crate) struct DisabledKV;
@@ -11,7 +11,6 @@ impl DisabledKV {
     {
         Ok(DisabledKV)
     }
-
 
     pub fn get<T>(&self, _prefix: &'static str, _key: T) -> Result<Option<Vec<u8>>>
     where
@@ -87,7 +86,7 @@ impl DisabledKV {
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,
     {
-        Ok(())    
+        Ok(())
     }
 
     pub fn iter_range<T, Y>(
@@ -95,10 +94,10 @@ impl DisabledKV {
         _prefix: &'static str,
         _start: Option<T>,
         _end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>,Box<[u8]>)>> + '_>>
+    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
     where
         T: AsRef<[u8]>,
-        Y: AsRef<[u8]>
+        Y: AsRef<[u8]>,
     {
         //Return an empty iterator
         Ok(Box::new(vec![].into_iter()))

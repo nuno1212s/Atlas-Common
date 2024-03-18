@@ -1,5 +1,6 @@
 //! Abstractions over different socket types of crates in the Rust ecosystem.
 
+use anyhow::Context;
 use std::io;
 use std::io::{BufRead, ErrorKind, Read, Write};
 use std::net::SocketAddr;
@@ -7,7 +8,6 @@ use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::{Context as Cntx, Poll};
-use anyhow::Context;
 
 use either::Either;
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite};
@@ -19,7 +19,9 @@ use mio::{Interest, Registry, Token};
 
 use rustls::{ClientConnection, Error, IoState, ServerConnection, StreamOwned};
 use tokio_rustls::TlsStream;
-use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt, FuturesAsyncReadCompatExt};
+use tokio_util::compat::{
+    Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
+};
 
 use crate::error::*;
 
@@ -98,26 +100,32 @@ impl From<SyncListener> for MioListener {
 
 impl From<mio::net::TcpStream> for MioSocket {
     fn from(value: mio::net::TcpStream) -> Self {
-        MioSocket {
-            inner: value,
-        }
+        MioSocket { inner: value }
     }
 }
 
 impl From<mio::net::TcpListener> for MioListener {
     fn from(value: mio::net::TcpListener) -> Self {
-        MioListener {
-            inner: value,
-        }
+        MioListener { inner: value }
     }
 }
 
 impl Source for MioSocket {
-    fn register(&mut self, registry: &Registry, token: Token, interests: Interest) -> io::Result<()> {
+    fn register(
+        &mut self,
+        registry: &Registry,
+        token: Token,
+        interests: Interest,
+    ) -> io::Result<()> {
         self.inner.register(registry, token, interests)
     }
 
-    fn reregister(&mut self, registry: &Registry, token: Token, interests: Interest) -> io::Result<()> {
+    fn reregister(
+        &mut self,
+        registry: &Registry,
+        token: Token,
+        interests: Interest,
+    ) -> io::Result<()> {
         self.inner.reregister(registry, token, interests)
     }
 
@@ -127,11 +135,21 @@ impl Source for MioSocket {
 }
 
 impl Source for MioListener {
-    fn register(&mut self, registry: &Registry, token: Token, interests: Interest) -> io::Result<()> {
+    fn register(
+        &mut self,
+        registry: &Registry,
+        token: Token,
+        interests: Interest,
+    ) -> io::Result<()> {
         self.inner.register(registry, token, interests)
     }
 
-    fn reregister(&mut self, registry: &Registry, token: Token, interests: Interest) -> io::Result<()> {
+    fn reregister(
+        &mut self,
+        registry: &Registry,
+        token: Token,
+        interests: Interest,
+    ) -> io::Result<()> {
         self.inner.reregister(registry, token, interests)
     }
 
@@ -171,7 +189,9 @@ impl DerefMut for MioSocket {
 /// Initialize the sockets module.
 pub unsafe fn init() -> Result<()> {
     #[cfg(feature = "socket_rio_tcp")]
-    { rio_tcp::init()?; }
+    {
+        rio_tcp::init()?;
+    }
 
     Ok(())
 }
@@ -179,7 +199,9 @@ pub unsafe fn init() -> Result<()> {
 /// Drops the global data associated with sockets.
 pub unsafe fn drop() -> Result<()> {
     #[cfg(feature = "socket_rio_tcp")]
-    { rio_tcp::drop()?; }
+    {
+        rio_tcp::drop()?;
+    }
 
     Ok(())
 }
@@ -188,16 +210,22 @@ pub unsafe fn drop() -> Result<()> {
 pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncListener> {
     {
         #[cfg(feature = "socket_tokio_tcp")]
-        { tokio_tcp::bind(addr).await }
+        {
+            tokio_tcp::bind(addr).await
+        }
 
         #[cfg(feature = "socket_async_std_tcp")]
-        { async_std_tcp::bind(addr).await }
+        {
+            async_std_tcp::bind(addr).await
+        }
 
         #[cfg(feature = "socket_rio_tcp")]
-        { rio_tcp::bind(addr).await }
+        {
+            rio_tcp::bind(addr).await
+        }
     }
-        .and_then(|inner| set_listener_options(AsyncListener { inner }))
-        .context("Failed to bind async server")
+    .and_then(|inner| set_listener_options(AsyncListener { inner }))
+    .context("Failed to bind async server")
 }
 
 pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener> {
@@ -210,24 +238,31 @@ pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener> {
 pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> Result<AsyncSocket> {
     {
         #[cfg(feature = "socket_tokio_tcp")]
-        { tokio_tcp::connect(addr).await }
+        {
+            tokio_tcp::connect(addr).await
+        }
 
         #[cfg(feature = "socket_async_std_tcp")]
-        { async_std_tcp::connect(addr).await }
+        {
+            async_std_tcp::connect(addr).await
+        }
 
         #[cfg(feature = "socket_rio_tcp")]
-        { rio_tcp::connect(addr).await }
-    }.and_then(|inner| set_sockstream_options(AsyncSocket { inner }))
+        {
+            rio_tcp::connect(addr).await
+        }
+    }
+    .and_then(|inner| set_sockstream_options(AsyncSocket { inner }))
 }
 
 pub fn connect_sync<A: Into<SocketAddr>>(addr: A) -> Result<SyncSocket> {
-    { std_tcp::connect(addr) }
-        .and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
+    { std_tcp::connect(addr) }.and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
 }
 
 impl AsyncListener {
     pub async fn accept(&self) -> Result<AsyncSocket> {
-        self.inner.accept()
+        self.inner
+            .accept()
             .await
             .and_then(|inner| set_sockstream_options(AsyncSocket { inner }))
     }
@@ -235,7 +270,8 @@ impl AsyncListener {
 
 impl SyncListener {
     pub fn accept(&self) -> Result<SyncSocket> {
-        self.inner.accept()
+        self.inner
+            .accept()
             .and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
     }
 }
@@ -247,19 +283,22 @@ impl AsyncSocket {
 
     pub(super) fn split(self) -> (WriteHalfAsync, ReadHalfAsync) {
         #[cfg(feature = "socket_tokio_tcp")]
-            let (write, read) = tokio_tcp::split_socket(self.inner);
+        let (write, read) = tokio_tcp::split_socket(self.inner);
         #[cfg(feature = "socket_async_std_tcp")]
-            let (write, read) = async_std_tcp::split_socket(self.inner);
+        let (write, read) = async_std_tcp::split_socket(self.inner);
 
         //Buffer both the connections
         let write_buffered = BufWriter::with_capacity(WRITE_BUFFER_SIZE, write);
         let read_buffered = BufReader::with_capacity(READ_BUFFER_SIZE, read);
 
-        (WriteHalfAsync {
-            inner: write_buffered,
-        }, ReadHalfAsync {
-            inner: read_buffered
-        })
+        (
+            WriteHalfAsync {
+                inner: write_buffered,
+            },
+            ReadHalfAsync {
+                inner: read_buffered,
+            },
+        )
     }
 }
 
@@ -268,8 +307,7 @@ impl AsyncRead for AsyncSocket {
         mut self: Pin<&mut Self>,
         cx: &mut Cntx<'_>,
         buf: &mut [u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -279,24 +317,15 @@ impl AsyncWrite for AsyncSocket {
         mut self: Pin<&mut Self>,
         cx: &mut Cntx<'_>,
         buf: &[u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Cntx<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        cx: &mut Cntx<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -339,16 +368,20 @@ impl SecureSocketSync {
             SecureSocketSync::Plain(socket) => {
                 let (write_half, read_half) = socket.split();
 
-                (SecureWriteHalfSync::Plain(write_half),
-                 SecureReadHalfSync::Plain(read_half))
+                (
+                    SecureWriteHalfSync::Plain(write_half),
+                    SecureReadHalfSync::Plain(read_half),
+                )
             }
             SecureSocketSync::Tls(connection, socket) => {
                 let (write, read) = socket.split();
 
                 let shared_conn = Arc::new(Mutex::new(connection));
 
-                (SecureWriteHalfSync::Tls(shared_conn.clone(), write),
-                 SecureReadHalfSync::Tls(shared_conn, read))
+                (
+                    SecureWriteHalfSync::Tls(shared_conn.clone(), write),
+                    SecureReadHalfSync::Tls(shared_conn, read),
+                )
             }
         }
     }
@@ -356,20 +389,24 @@ impl SecureSocketSync {
 
 pub enum SecureWriteHalfSync {
     Plain(WriteHalfSync),
-    Tls(Arc<Mutex<Either<ClientConnection, ServerConnection>>>, WriteHalfSync),
+    Tls(
+        Arc<Mutex<Either<ClientConnection, ServerConnection>>>,
+        WriteHalfSync,
+    ),
 }
 
 pub enum SecureReadHalfSync {
     Plain(ReadHalfSync),
-    Tls(Arc<Mutex<Either<ClientConnection, ServerConnection>>>, ReadHalfSync),
+    Tls(
+        Arc<Mutex<Either<ClientConnection, ServerConnection>>>,
+        ReadHalfSync,
+    ),
 }
 
 impl Read for SecureReadHalfSync {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match self {
-            SecureReadHalfSync::Plain(plain) => {
-                std::io::Read::read(plain, buf)
-            }
+            SecureReadHalfSync::Plain(plain) => std::io::Read::read(plain, buf),
             SecureReadHalfSync::Tls(tls_conn, sock) => {
                 match &mut *tls_conn.lock().unwrap() {
                     Either::Left(tls_conn) => {
@@ -421,9 +458,7 @@ impl Read for SecureReadHalfSync {
 impl Write for SecureWriteHalfSync {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self {
-            SecureWriteHalfSync::Plain(write_half) => {
-                write_half.write(buf)
-            }
+            SecureWriteHalfSync::Plain(write_half) => write_half.write(buf),
             SecureWriteHalfSync::Tls(tls_conn, socket) => {
                 match &mut *tls_conn.lock().unwrap() {
                     Either::Left(tls_conn) => {
@@ -481,27 +516,23 @@ impl Write for SecureWriteHalfSync {
 
     fn flush(&mut self) -> io::Result<()> {
         match self {
-            SecureWriteHalfSync::Plain(socket) => {
-                socket.flush()
-            }
-            SecureWriteHalfSync::Tls(tls_conn, socket2) => {
-                match &mut *tls_conn.lock().unwrap() {
-                    Either::Left(tls_conn) => {
-                        while tls_conn.wants_write() {
-                            tls_conn.write_tls(socket2)?;
-                        }
-
-                        socket2.flush()
+            SecureWriteHalfSync::Plain(socket) => socket.flush(),
+            SecureWriteHalfSync::Tls(tls_conn, socket2) => match &mut *tls_conn.lock().unwrap() {
+                Either::Left(tls_conn) => {
+                    while tls_conn.wants_write() {
+                        tls_conn.write_tls(socket2)?;
                     }
-                    Either::Right(tls_conn) => {
-                        while tls_conn.wants_write() {
-                            tls_conn.write_tls(socket2)?;
-                        }
 
-                        socket2.flush()
-                    }
+                    socket2.flush()
                 }
-            }
+                Either::Right(tls_conn) => {
+                    while tls_conn.wants_write() {
+                        tls_conn.write_tls(socket2)?;
+                    }
+
+                    socket2.flush()
+                }
+            },
         }
     }
 }
@@ -525,8 +556,10 @@ impl SecureSocketAsync {
             SecureSocketAsync::Plain(socket) => {
                 let (write, read) = socket.split();
 
-                (SecureWriteHalfAsync::Plain(write),
-                 SecureReadHalfAsync::Plain(read))
+                (
+                    SecureWriteHalfAsync::Plain(write),
+                    SecureReadHalfAsync::Plain(read),
+                )
             }
             SecureSocketAsync::Tls(tls_stream) => {
                 //FIXME: We have found that TlsStreams really don't like to be used in duplex mode
@@ -546,10 +579,13 @@ impl SecureSocketAsync {
                 //We have to wrap these at this point instead of at the lower level
                 // since we can't use the same method but that's fine I guess
                 let read_buffered = BufReader::with_capacity(READ_BUFFER_SIZE, read.compat());
-                let write_buffered = BufWriter::with_capacity(WRITE_BUFFER_SIZE, write.compat_write());
+                let write_buffered =
+                    BufWriter::with_capacity(WRITE_BUFFER_SIZE, write.compat_write());
 
-                (SecureWriteHalfAsync::Tls(write_buffered),
-                 SecureReadHalfAsync::Tls(read_buffered))
+                (
+                    SecureWriteHalfAsync::Tls(write_buffered),
+                    SecureReadHalfAsync::Tls(read_buffered),
+                )
             }
         }
     }
@@ -566,49 +602,41 @@ pub enum SecureReadHalfAsync {
 }
 
 impl AsyncWrite for SecureWriteHalfAsync {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Cntx<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
         match &mut *self {
-            SecureWriteHalfAsync::Plain(inner) => {
-                Pin::new(inner).poll_write(cx, buf)
-            }
-            SecureWriteHalfAsync::Tls(inner) => {
-                Pin::new(inner).poll_write(cx, buf)
-            }
+            SecureWriteHalfAsync::Plain(inner) => Pin::new(inner).poll_write(cx, buf),
+            SecureWriteHalfAsync::Tls(inner) => Pin::new(inner).poll_write(cx, buf),
         }
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
-            SecureWriteHalfAsync::Plain(inner) => {
-                Pin::new(inner).poll_flush(cx)
-            }
-            SecureWriteHalfAsync::Tls(inner) => {
-                Pin::new(inner).poll_flush(cx)
-            }
+            SecureWriteHalfAsync::Plain(inner) => Pin::new(inner).poll_flush(cx),
+            SecureWriteHalfAsync::Tls(inner) => Pin::new(inner).poll_flush(cx),
         }
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
-            SecureWriteHalfAsync::Plain(inner) => {
-                Pin::new(inner).poll_close(cx)
-            }
-            SecureWriteHalfAsync::Tls(inner) => {
-                Pin::new(inner).poll_flush(cx)
-            }
+            SecureWriteHalfAsync::Plain(inner) => Pin::new(inner).poll_close(cx),
+            SecureWriteHalfAsync::Tls(inner) => Pin::new(inner).poll_flush(cx),
         }
     }
 }
 
 impl AsyncRead for SecureReadHalfAsync {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Cntx<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         match &mut *self {
-            SecureReadHalfAsync::Plain(inner) => {
-                Pin::new(inner).poll_read(cx, buf)
-            }
-            SecureReadHalfAsync::Tls(inner) => {
-                Pin::new(inner).poll_read(cx, buf)
-            }
+            SecureReadHalfAsync::Plain(inner) => Pin::new(inner).poll_read(cx, buf),
+            SecureReadHalfAsync::Tls(inner) => Pin::new(inner).poll_read(cx, buf),
         }
     }
 }
@@ -650,8 +678,7 @@ impl AsyncRead for ReadHalfAsync {
         mut self: Pin<&mut Self>,
         cx: &mut Cntx<'_>,
         buf: &mut [u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -661,24 +688,15 @@ impl AsyncWrite for WriteHalfAsync {
         mut self: Pin<&mut Self>,
         cx: &mut Cntx<'_>,
         buf: &[u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Cntx<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        cx: &mut Cntx<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -707,8 +725,14 @@ impl SyncSocket {
 
         let read_buffered = io::BufReader::with_capacity(READ_BUFFER_SIZE, read);
 
-        (WriteHalfSync { inner: write_buffered },
-         ReadHalfSync { inner: read_buffered })
+        (
+            WriteHalfSync {
+                inner: write_buffered,
+            },
+            ReadHalfSync {
+                inner: read_buffered,
+            },
+        )
     }
 }
 
@@ -733,49 +757,41 @@ impl Read for SyncSocket {
 }
 
 impl AsyncRead for SecureSocketAsync {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Cntx<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         match &mut *self {
-            SecureSocketAsync::Plain(plain) => {
-                Pin::new(plain).poll_read(cx, buf)
-            }
-            SecureSocketAsync::Tls(tls) => {
-                Pin::new(tls).poll_read(cx, buf)
-            }
+            SecureSocketAsync::Plain(plain) => Pin::new(plain).poll_read(cx, buf),
+            SecureSocketAsync::Tls(tls) => Pin::new(tls).poll_read(cx, buf),
         }
     }
 }
 
 impl AsyncWrite for SecureSocketAsync {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Cntx<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
         match &mut *self {
-            SecureSocketAsync::Plain(plain) => {
-                Pin::new(plain).poll_write(cx, buf)
-            }
-            SecureSocketAsync::Tls(tls) => {
-                Pin::new(tls).poll_write(cx, buf)
-            }
+            SecureSocketAsync::Plain(plain) => Pin::new(plain).poll_write(cx, buf),
+            SecureSocketAsync::Tls(tls) => Pin::new(tls).poll_write(cx, buf),
         }
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
-            SecureSocketAsync::Plain(plain) => {
-                Pin::new(plain).poll_flush(cx)
-            }
-            SecureSocketAsync::Tls(tls) => {
-                Pin::new(tls).poll_flush(cx)
-            }
+            SecureSocketAsync::Plain(plain) => Pin::new(plain).poll_flush(cx),
+            SecureSocketAsync::Tls(tls) => Pin::new(tls).poll_flush(cx),
         }
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Cntx<'_>) -> Poll<io::Result<()>> {
         match &mut *self {
-            SecureSocketAsync::Plain(plain) => {
-                Pin::new(plain).poll_close(cx)
-            }
-            SecureSocketAsync::Tls(tls) => {
-                Pin::new(tls).poll_close(cx)
-            }
+            SecureSocketAsync::Plain(plain) => Pin::new(plain).poll_close(cx),
+            SecureSocketAsync::Tls(tls) => Pin::new(tls).poll_close(cx),
         }
     }
 }
@@ -794,7 +810,6 @@ fn set_listener_options(listener: AsyncListener) -> Result<AsyncListener> {
     Ok(listener)
 }
 
-
 // set listener socket options; translated from BFT-SMaRt
 #[inline]
 fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> {
@@ -809,7 +824,6 @@ fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> 
     Ok(listener)
 }
 
-
 // set connection socket options; translated from BFT-SMaRt
 #[inline]
 fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket> {
@@ -821,7 +835,6 @@ fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket> {
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
     Ok(connection)
 }
-
 
 #[inline]
 fn set_sockstream_options_sync(connection: SyncSocket) -> Result<SyncSocket> {

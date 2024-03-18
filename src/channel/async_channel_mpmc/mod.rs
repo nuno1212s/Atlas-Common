@@ -1,19 +1,13 @@
-use std::pin::Pin;
 use std::future::Future;
-use std::task::{Poll, Context};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-use async_channel::{
-    Sender,
-    Receiver,
-};
-use futures::stream::{
-    Stream,
-    FusedStream,
-};
-use futures::future::FusedFuture;
 use crate::channel::{RecvError, SendReturnError};
 use crate::error::*;
 use crate::Err;
+use async_channel::{Receiver, Sender};
+use futures::future::FusedFuture;
+use futures::stream::{FusedStream, Stream};
 
 pub struct ChannelAsyncTx<T> {
     inner: Sender<T>,
@@ -51,12 +45,8 @@ pub fn new_bounded<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelAsyncRx<T>) {
 impl<T> ChannelAsyncTx<T> {
     #[inline]
     pub async fn send(&mut self, message: T) -> Result<()> {
-        match self.inner
-            .send(message)
-            .await {
-            Ok(_) => {
-                Ok(())
-            }
+        match self.inner.send(message).await {
+            Ok(_) => Ok(()),
             Err(err) => {
                 Err!(SendReturnError::FailedToSend(err.into_inner()))
             }

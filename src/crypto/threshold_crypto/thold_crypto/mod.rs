@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Context};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use threshold_crypto::{Fr, IntoFr};
 use threshold_crypto::poly::{Commitment, Poly};
+use threshold_crypto::{Fr, IntoFr};
 
 use crate::error::*;
 
@@ -78,22 +78,18 @@ impl SecretKeySet {
 
         let sk_set = threshold_crypto::SecretKeySet::random(n, &mut rand);
 
-        Ok(SecretKeySet {
-            sk_set,
-        })
+        Ok(SecretKeySet { sk_set })
     }
 
     pub fn get_key_share(&self, i: usize) -> Result<PrivateKeyPart> {
         let key = self.sk_set.secret_key_share(i);
 
-        Ok(PrivateKeyPart {
-            key,
-        })
+        Ok(PrivateKeyPart { key })
     }
 
     pub fn public_key_set(&self) -> PublicKeySet {
         PublicKeySet {
-            pk_set: self.sk_set.public_keys()
+            pk_set: self.sk_set.public_keys(),
         }
     }
 }
@@ -101,24 +97,20 @@ impl SecretKeySet {
 impl PrivateKeyPart {
     pub fn public_key_part(&self) -> PublicKeyPart {
         PublicKeyPart {
-            key: self.key.public_key_share()
+            key: self.key.public_key_share(),
         }
     }
 
     pub fn partially_sign(&self, msg: &[u8]) -> Result<PartialSignature> {
         let sig = self.key.sign(msg);
 
-        Ok(PartialSignature {
-            sig,
-        })
+        Ok(PartialSignature { sig })
     }
 
     pub fn from_mut(mut sk: &mut Fr) -> Self {
         let key = threshold_crypto::SecretKeyShare::from_mut(sk);
 
-        PrivateKeyPart {
-            key,
-        }
+        PrivateKeyPart { key }
     }
 }
 
@@ -137,9 +129,7 @@ impl PublicKey {
     pub fn from_bytes(bytes: &[u8; threshold_crypto::PK_SIZE]) -> Result<PublicKey> {
         let key = threshold_crypto::PublicKey::from_bytes(bytes)?;
 
-        Ok(PublicKey {
-            key,
-        })
+        Ok(PublicKey { key })
     }
 }
 
@@ -148,37 +138,40 @@ impl PublicKeySet {
     pub fn public_key(&self) -> PublicKey {
         let key = self.pk_set.public_key();
 
-        PublicKey {
-            key,
-        }
+        PublicKey { key }
     }
 
     #[inline(always)]
     pub fn get_public_key_part(&self, i: usize) -> Result<PublicKeyPart> {
         let key = self.pk_set.public_key_share(i);
 
-        Ok(PublicKeyPart {
-            key,
-        })
+        Ok(PublicKeyPart { key })
     }
 
     #[inline(always)]
-    pub fn verify_partial_signature(&self, index: usize, msg: &[u8], sig: &PartialSignature) -> Result<()> {
+    pub fn verify_partial_signature(
+        &self,
+        index: usize,
+        msg: &[u8],
+        sig: &PartialSignature,
+    ) -> Result<()> {
         self.get_public_key_part(index)?.verify(msg, sig)
     }
 
     #[inline(always)]
     pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature>
-        where I: IntoIterator<Item=(T, &'a PartialSignature)>,
-              T: IntoFr
+    where
+        I: IntoIterator<Item = (T, &'a PartialSignature)>,
+        T: IntoFr,
     {
-        let sigs = sigs.into_iter().map(|(index, sign)| (index, &sign.sig)).collect::<Vec<_>>();
+        let sigs = sigs
+            .into_iter()
+            .map(|(index, sign)| (index, &sign.sig))
+            .collect::<Vec<_>>();
 
         let sig = self.pk_set.combine_signatures(sigs)?;
 
-        Ok(Signature {
-            sig,
-        })
+        Ok(Signature { sig })
     }
 
     #[inline(always)]
@@ -194,23 +187,19 @@ impl PublicKeySet {
 impl From<Commitment> for PublicKeySet {
     fn from(value: Commitment) -> Self {
         PublicKeySet {
-            pk_set: threshold_crypto::PublicKeySet::from(value)
+            pk_set: threshold_crypto::PublicKeySet::from(value),
         }
     }
 }
 
 impl From<PublicKeySet> for super::PublicKeySet {
     fn from(value: PublicKeySet) -> Self {
-        super::PublicKeySet {
-            key: value,
-        }
+        super::PublicKeySet { key: value }
     }
 }
 
 impl From<PrivateKeyPart> for super::PrivateKeyPart {
     fn from(value: PrivateKeyPart) -> Self {
-        super::PrivateKeyPart {
-            key: value,
-        }
+        super::PrivateKeyPart { key: value }
     }
 }

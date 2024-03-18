@@ -1,3 +1,1 @@
-thread_local! {
-
-}
+thread_local! {}

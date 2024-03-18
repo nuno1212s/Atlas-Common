@@ -1,7 +1,7 @@
-use anyhow::anyhow;
 use crate::error::*;
+use anyhow::anyhow;
 #[cfg(feature = "serialize_serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// This struct contains the system parameters of
 /// a replica or client in `febft`, i.e. `n` and `f`
@@ -17,7 +17,7 @@ impl SystemParams {
     /// Creates a new instance of `SystemParams`.
     pub fn new(n: usize, f: usize) -> Result<Self> {
         if n < 3 * f + 1 {
-            return Err(anyhow!("Invalid params: n < 3f + 1"))
+            return Err(anyhow!("Invalid params: n < 3f + 1"));
         }
 
         Ok(SystemParams { n, f })

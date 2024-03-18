@@ -25,29 +25,28 @@
 //! libraries performing identical duties.
 #![feature(type_alias_impl_trait)]
 
-use log::{debug};
-use crate::globals::Flag;
 use crate::error::*;
+use crate::globals::Flag;
+use log::debug;
 
 pub mod async_runtime;
+pub mod channel;
 pub mod collections;
+pub mod config_utils;
 pub mod crypto;
 pub mod error;
 pub mod globals;
-pub mod ordering;
-pub mod prng;
-pub mod threadpool;
-pub mod persistentdb;
-pub mod channel;
-pub mod socket;
+pub mod maybe_vec;
 pub mod mem_pool;
 pub mod node_id;
-pub mod config_utils;
+pub mod ordering;
 pub mod peer_addr;
-pub mod system_params;
-pub mod maybe_vec;
+pub mod persistentdb;
+pub mod prng;
 pub mod serialization_helper;
-
+pub mod socket;
+pub mod system_params;
+pub mod threadpool;
 
 static INITIALIZED: Flag = Flag::new();
 
@@ -80,7 +79,10 @@ pub unsafe fn init(c: InitConfig) -> Result<Option<InitGuard>> {
     threadpool::init(c.threadpool_threads)?;
     async_runtime::init(c.async_threads)?;
 
-    debug!("Async threads {}, sync threads {}", c.async_threads, c.threadpool_threads);
+    debug!(
+        "Async threads {}, sync threads {}",
+        c.async_threads, c.threadpool_threads
+    );
 
     socket::init()?;
     INITIALIZED.set();

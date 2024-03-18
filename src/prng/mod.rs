@@ -4,9 +4,9 @@
 //! from David Blackman and Sebastiano Vigna. This source code is a one-to-one translation of their
 //! C code, released to the public domain.
 
-use std::cell::RefCell;
-use rand::{RngCore};
 use rand::rngs::OsRng;
+use rand::RngCore;
+use std::cell::RefCell;
 use thread_local::ThreadLocal;
 
 /// This type is a container for the 256-bit state of `xoshiro256**`.
@@ -15,26 +15,22 @@ pub struct State {
 }
 
 pub struct ThreadSafePrng {
-    rng: ThreadLocal<RefCell<State>>
+    rng: ThreadLocal<RefCell<State>>,
 }
 
 impl ThreadSafePrng {
-
     pub fn new() -> Self {
         Self {
-            rng: ThreadLocal::new()
+            rng: ThreadLocal::new(),
         }
     }
 
     #[inline]
     pub fn next_state(&self) -> u64 {
-        let state = self.rng.get_or(|| {
-            RefCell::new(State::new())
-        });
+        let state = self.rng.get_or(|| RefCell::new(State::new()));
 
         state.borrow_mut().next_state()
     }
-
 }
 
 impl State {
@@ -113,5 +109,5 @@ impl Iterator for State {
 
 #[inline]
 fn rotl(x: u64, k: u64) -> u64 {
-	(x << k) | (x >> (64 - k))
+    (x << k) | (x >> (64 - k))
 }

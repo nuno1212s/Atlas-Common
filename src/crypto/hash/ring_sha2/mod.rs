@@ -1,13 +1,9 @@
-use ring::digest::{
-    self,
-    SHA256,
-    SHA256_OUTPUT_LEN,
-};
+use ring::digest::{self, SHA256, SHA256_OUTPUT_LEN};
 
-#[cfg(feature = "serialize_serde")]
-use serde::{Serialize, Deserialize};
-use crate::Err;
 use crate::crypto::hash::HashError;
+use crate::Err;
+#[cfg(feature = "serialize_serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::error::*;
 
@@ -43,7 +39,7 @@ impl Digest {
         if raw_bytes.len() < Self::LENGTH {
             return Err!(HashError::DigestLen(raw_bytes.len()));
         }
-        
+
         Ok(Self::from_bytes_unchecked(raw_bytes))
     }
 
@@ -59,7 +55,6 @@ impl AsRef<[u8]> for Digest {
         &self.0
     }
 }
-
 
 #[cfg(test)]
 mod tests {

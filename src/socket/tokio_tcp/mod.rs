@@ -1,15 +1,15 @@
+use futures::{AsyncRead, AsyncWrite};
 use std::io;
 use std::io::{Read, Write};
-use std::pin::Pin;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
-use std::task::{Poll, Context};
-use futures::{AsyncRead, AsyncWrite};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-use tokio::net::{TcpStream, TcpListener};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 use crate::error::*;
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::net::{TcpListener, TcpStream};
+use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 pub struct Socket {
     inner: Compat<TcpStream>,
@@ -20,9 +20,7 @@ pub struct Listener {
 }
 
 pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
-    let listener = TcpListener::bind(addr.into())
-        .await
-        .map(Listener::new)?;
+    let listener = TcpListener::bind(addr.into()).await.map(Listener::new)?;
 
     Ok(listener)
 }
@@ -41,7 +39,8 @@ impl Listener {
     }
 
     pub async fn accept(&self) -> Result<Socket> {
-        let socket = self.inner
+        let socket = self
+            .inner
             .accept()
             .await
             .map(|(s, _)| Socket::new(s.compat()))?;
@@ -61,8 +60,7 @@ impl AsyncRead for Socket {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -72,24 +70,15 @@ impl AsyncWrite for Socket {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -111,8 +100,7 @@ impl AsyncRead for ReadHalf {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -122,24 +110,15 @@ impl AsyncWrite for WriteHalf {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -147,8 +126,14 @@ impl AsyncWrite for WriteHalf {
 pub(super) fn split_socket(sock: Socket) -> (WriteHalf, ReadHalf) {
     let (read, write) = sock.inner.into_inner().into_split();
 
-    (WriteHalf { inner: write.compat_write() },
-     ReadHalf { inner: read.compat() })
+    (
+        WriteHalf {
+            inner: write.compat_write(),
+        },
+        ReadHalf {
+            inner: read.compat(),
+        },
+    )
 }
 
 #[cfg(windows)]
@@ -158,7 +143,7 @@ mod sys {
 
 #[cfg(unix)]
 mod sys {
-    use std::os::unix::io::{RawFd, AsRawFd};
+    use std::os::unix::io::{AsRawFd, RawFd};
 
     impl AsRawFd for super::Socket {
         fn as_raw_fd(&self) -> RawFd {

@@ -1,12 +1,12 @@
+use anyhow::{anyhow, Context};
 use std::fmt::format;
 use std::path::Path;
-use anyhow::{anyhow, Context};
 
+use crate::Err;
 use rocksdb::{
     ColumnFamily, ColumnFamilyDescriptor, CompactOptions, DBWithThreadMode, Direction,
     IteratorMode, Options, SingleThreaded, WriteBatchWithTransaction, DB,
 };
-use crate::Err;
 
 use crate::error::*;
 use crate::persistentdb::PersStorage;
@@ -17,8 +17,8 @@ pub(crate) struct RocksKVDB {
 
 impl RocksKVDB {
     pub fn new<T>(db_location: T, prefixes: Vec<&'static str>) -> Result<Self>
-        where
-            T: AsRef<Path>,
+    where
+        T: AsRef<Path>,
     {
         let mut cfs = Vec::with_capacity(prefixes.len());
 
@@ -48,8 +48,8 @@ impl RocksKVDB {
     }
 
     pub fn get<T>(&self, prefix: &'static str, key: T) -> Result<Option<Vec<u8>>>
-        where
-            T: AsRef<[u8]>,
+    where
+        T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -59,20 +59,22 @@ impl RocksKVDB {
     }
 
     pub fn get_all<T, Y>(&self, keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
-        where
-            T: Iterator<Item=(&'static str, Y)>,
-            Y: AsRef<[u8]>,
+    where
+        T: Iterator<Item = (&'static str, Y)>,
+        Y: AsRef<[u8]>,
     {
-        let final_keys: Result<Vec<_>> =
-            keys.map(|(prefix, key)| {
+        let final_keys: Result<Vec<_>> = keys
+            .map(|(prefix, key)| {
                 if let Ok(handle) = self.get_handle(prefix) {
                     Ok((handle, key))
                 } else {
                     Err(anyhow!(""))
                 }
-            }).collect();
+            })
+            .collect();
 
-        Ok(self.db
+        Ok(self
+            .db
             .multi_get_cf(final_keys?)
             .into_iter()
             .map(|r| {
@@ -81,12 +83,13 @@ impl RocksKVDB {
                 } else {
                     Err(anyhow!(""))
                 }
-            }).collect())
+            })
+            .collect())
     }
 
     pub fn exists<T>(&self, prefix: &'static str, key: T) -> Result<bool>
-        where
-            T: AsRef<[u8]>,
+    where
+        T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -94,9 +97,9 @@ impl RocksKVDB {
     }
 
     pub fn set<T, Y>(&self, prefix: &'static str, key: T, data: Y) -> Result<()>
-        where
-            T: AsRef<[u8]>,
-            Y: AsRef<[u8]>,
+    where
+        T: AsRef<[u8]>,
+        Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -106,10 +109,10 @@ impl RocksKVDB {
     }
 
     pub fn set_all<T, Y, Z>(&self, prefix: &'static str, values: T) -> Result<()>
-        where
-            T: Iterator<Item=(Y, Z)>,
-            Y: AsRef<[u8]>,
-            Z: AsRef<[u8]>,
+    where
+        T: Iterator<Item = (Y, Z)>,
+        Y: AsRef<[u8]>,
+        Z: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -119,13 +122,12 @@ impl RocksKVDB {
             batch.put_cf(handle, key, value)
         }
 
-        self.db.write(batch)
-            .context(format!("Failed to set keys"))
+        self.db.write(batch).context(format!("Failed to set keys"))
     }
 
     pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
-        where
-            T: AsRef<[u8]>,
+    where
+        T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -138,9 +140,9 @@ impl RocksKVDB {
     /// Accepts an [`&[&[u8]]`], in any possible form, as long as it can be dereferenced
     /// all the way to the intended target.
     pub fn erase_keys<T, Y>(&self, prefix: &'static str, keys: T) -> Result<()>
-        where
-            T: Iterator<Item=Y>,
-            Y: AsRef<[u8]>,
+    where
+        T: Iterator<Item = Y>,
+        Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -150,13 +152,14 @@ impl RocksKVDB {
             batch.delete_cf(handle, key)
         }
 
-        self.db.write(batch)
+        self.db
+            .write(batch)
             .context(format!("Failed to erase in prefix {:?}", prefix))
     }
 
     pub fn erase_range<T>(&self, prefix: &'static str, start: T, end: T) -> Result<()>
-        where
-            T: AsRef<[u8]>,
+    where
+        T: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -171,9 +174,9 @@ impl RocksKVDB {
         start: Option<T>,
         end: Option<Y>,
     ) -> Result<()>
-        where
-            T: AsRef<[u8]>,
-            Y: AsRef<[u8]>,
+    where
+        T: AsRef<[u8]>,
+        Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
@@ -187,10 +190,10 @@ impl RocksKVDB {
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item=Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
-        where
-            T: AsRef<[u8]>,
-            Y: AsRef<[u8]>
+    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
+    where
+        T: AsRef<[u8]>,
+        Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 

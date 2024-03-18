@@ -1,5 +1,5 @@
 #[cfg(feature = "serialize_serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 /// A `NodeId` represents the id of a process in the BFT system.
@@ -12,21 +12,20 @@ pub struct NodeId(pub u32);
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub enum NodeType {
     Replica,
-    Client
+    Client,
 }
 
 impl NodeId {
-    
-    pub fn targets_u32<I>(into_iterator: I) -> impl Iterator<Item=Self>
-        where
-            I: IntoIterator<Item=u32>,
+    pub fn targets_u32<I>(into_iterator: I) -> impl Iterator<Item = Self>
+    where
+        I: IntoIterator<Item = u32>,
     {
         into_iterator.into_iter().map(Self)
     }
 
-    pub fn targets<I>(into_iterator: I) -> impl Iterator<Item=Self>
-        where
-            I: IntoIterator<Item=usize>,
+    pub fn targets<I>(into_iterator: I) -> impl Iterator<Item = Self>
+    where
+        I: IntoIterator<Item = usize>,
     {
         into_iterator.into_iter().map(NodeId::from)
     }

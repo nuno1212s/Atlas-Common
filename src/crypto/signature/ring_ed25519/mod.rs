@@ -1,20 +1,16 @@
 use anyhow::Context;
 #[cfg(feature = "serialize_serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "serialize_serde")]
 use serde_big_array::BigArray;
 
-use ring::{
-    signature as rsig,
-    signature::KeyPair as RKeyPair,
-    signature::ED25519_PUBLIC_KEY_LEN,
-};
-use ring::error::{KeyRejected, Unspecified};
-use ring::signature::Ed25519KeyPair;
-use rustls::PrivateKey;
 use crate::crypto::signature::{SignError, VerifyError};
 use crate::Err;
+use ring::error::{KeyRejected, Unspecified};
+use ring::signature::Ed25519KeyPair;
+use ring::{signature as rsig, signature::KeyPair as RKeyPair, signature::ED25519_PUBLIC_KEY_LEN};
+use rustls::PrivateKey;
 
 use crate::error::*;
 
@@ -34,8 +30,7 @@ pub struct PublicKey {
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct Signature(
-    #[cfg_attr(feature = "serialize_serde", serde(with = "BigArray"))]
-    [u8; Signature::LENGTH]
+    #[cfg_attr(feature = "serialize_serde", serde(with = "BigArray"))] [u8; Signature::LENGTH],
 );
 
 impl KeyPair {
@@ -53,10 +48,7 @@ impl KeyPair {
 
         let pk = PublicKey::from_bytes_unchecked(pk_bytes);
 
-        Ok((Self {
-            sk,
-            pk,
-        }, pk_bytes.to_vec()))
+        Ok((Self { sk, pk }, pk_bytes.to_vec()))
     }
 
     pub fn from_bytes(seed_bytes: &[u8]) -> Result<(Self, Vec<u8>)> {
@@ -106,16 +98,21 @@ impl PublicKey {
         PublicKey { pk }
     }
 
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> std::result::Result<(), VerifyError> {
-        
+    pub fn verify(
+        &self,
+        message: &[u8],
+        signature: &Signature,
+    ) -> std::result::Result<(), VerifyError> {
         if signature.as_ref().len() != Signature::LENGTH {
             return Err!(VerifyError::SignatureLen(signature.as_ref().len()));
         } else if signature.as_ref() == &[0; Signature::LENGTH][..] {
             return Err!(VerifyError::BlankSignature);
         }
-        
-        self.pk.verify(message, signature.as_ref()).map_err(|e| VerifyError::VerificationError(format!("{:?}", e), signature.0.to_vec()))?;
-        
+
+        self.pk.verify(message, signature.as_ref()).map_err(|e| {
+            VerifyError::VerificationError(format!("{:?}", e), signature.0.to_vec())
+        })?;
+
         Ok(())
     }
 }
@@ -146,17 +143,15 @@ impl AsRef<[u8]> for Signature {
 
 #[cfg(test)]
 mod tests {
-    use super::{Signature, KeyPair};
+    use super::{KeyPair, Signature};
 
     #[test]
     fn test_sign_verify() {
         let k = KeyPair::from_bytes(&[0; 32][..]).expect("Invalid key bytes");
 
         let message = b"test message";
-        let signature = k.0.sign(message)
-            .expect("Signature failed");
-        k.0
-            .public_key()
+        let signature = k.0.sign(message).expect("Signature failed");
+        k.0.public_key()
             .verify(message, &signature)
             .expect("Verify failed");
     }

@@ -1,19 +1,13 @@
-use std::pin::Pin;
 use std::future::Future;
-use std::task::{Poll, Context};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-use futures::channel::mpsc;
-use futures::stream::{
-    Stream,
-    FusedStream,
-};
-use futures::future::{
-    poll_fn,
-    FusedFuture,
-};
 use crate::channel::{RecvError, SendReturnError};
 use crate::error::*;
 use crate::Err;
+use futures::channel::mpsc;
+use futures::future::{poll_fn, FusedFuture};
+use futures::stream::{FusedStream, Stream};
 
 pub struct ChannelAsyncTx<T> {
     inner: mpsc::Sender<T>,
@@ -51,14 +45,9 @@ impl<T> ChannelAsyncTx<T> {
             }
         };
 
-        match self.inner
-            .try_send(message) {
-            Ok(_) => {
-                Ok(())
-            }
-            Err(err) => {
-                Err(SendReturnError::FailedToSend(err.into_inner()))
-            }
+        match self.inner.try_send(message) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),
         }
     }
 
@@ -69,7 +58,8 @@ impl<T> ChannelAsyncTx<T> {
             Poll::Ready(Err(e)) if e.is_full() => Poll::Pending,
             Poll::Ready(_) => Poll::Ready(Err!(())),
             Poll::Pending => Poll::Pending,
-        }).await
+        })
+        .await
     }
 }
 

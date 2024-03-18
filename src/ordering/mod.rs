@@ -1,23 +1,15 @@
 //! Ordering messages of the sub-protocols in `febft`.
 
-use std::cmp::{
-    PartialOrd,
-    PartialEq,
-    Ordering,
-};
+use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::collections::VecDeque;
 use std::ops::{Add, AddAssign};
 use std::sync::atomic::AtomicI32;
 
-use either::{
-    Left,
-    Right,
-    Either,
-};
+use either::{Either, Left, Right};
 use log::{error, trace, warn};
 
 #[cfg(feature = "serialize_serde")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub const PERIOD: u32 = 100000000;
 
@@ -101,7 +93,6 @@ impl SeqNo {
     pub const ZERO: Self = SeqNo(0);
     pub const ONE: Self = SeqNo(1);
 
-
     /// Returns the following sequence number.
     #[inline]
     pub fn next(self) -> SeqNo {
@@ -156,9 +147,7 @@ impl SeqNo {
 
 /// Takes an internal queue of a `TboQueue` (e.g. the one used in the consensus
 /// module), and pops a message.
-pub fn tbo_pop_message<M>(
-    tbo: &mut VecDeque<VecDeque<M>>,
-) -> Option<M> {
+pub fn tbo_pop_message<M>(tbo: &mut VecDeque<VecDeque<M>>) -> Option<M> {
     if tbo.is_empty() {
         None
     } else {
@@ -171,7 +160,11 @@ pub fn tbo_pop_message<M>(
 /// This method serves to help with Arc wrapped messages, which don't implement
 /// the underlying traits, so we require the sequence number to be passed alongside
 /// it
-pub fn tbo_queue_message_arc<M>(curr_seq: SeqNo, tbo: &mut VecDeque<VecDeque<M>>, (seq, message): (SeqNo, M)) {
+pub fn tbo_queue_message_arc<M>(
+    curr_seq: SeqNo,
+    tbo: &mut VecDeque<VecDeque<M>>,
+    (seq, message): (SeqNo, M),
+) {
     let index = match seq.index(curr_seq) {
         Right(i) => i,
         Left(_) => {
@@ -195,11 +188,7 @@ pub fn tbo_queue_message_arc<M>(curr_seq: SeqNo, tbo: &mut VecDeque<VecDeque<M>>
 
 /// Takes an internal queue of a `TboQueue` (e.g. the one used in the consensus
 /// module), and queues a message.
-pub fn tbo_queue_message<M: Orderable>(
-    curr_seq: SeqNo,
-    tbo: &mut VecDeque<VecDeque<M>>,
-    m: M,
-) {
+pub fn tbo_queue_message<M: Orderable>(curr_seq: SeqNo, tbo: &mut VecDeque<VecDeque<M>>, m: M) {
     let index = match m.sequence_number().index(curr_seq) {
         Right(i) => i,
         Left(_) => {
@@ -223,9 +212,7 @@ pub fn tbo_queue_message<M: Orderable>(
 
 /// Takes an internal queue of a `TboQueue` (e.g. the one used in the consensus
 /// module), and drops messages pertaining to the last sequence number.
-pub fn tbo_advance_message_queue<M>(
-    tbo: &mut VecDeque<VecDeque<M>>,
-) {
+pub fn tbo_advance_message_queue<M>(tbo: &mut VecDeque<VecDeque<M>>) {
     match tbo.pop_front() {
         Some(mut vec) => {
             // recycle memory
@@ -236,9 +223,7 @@ pub fn tbo_advance_message_queue<M>(
     }
 }
 
-pub fn tbo_advance_message_queue_return<M>(
-    tbo: &mut VecDeque<VecDeque<M>>
-) -> Option<VecDeque<M>> {
+pub fn tbo_advance_message_queue_return<M>(tbo: &mut VecDeque<VecDeque<M>>) -> Option<VecDeque<M>> {
     tbo.pop_front()
 }
 

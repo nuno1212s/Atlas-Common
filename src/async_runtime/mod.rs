@@ -6,15 +6,15 @@ mod tokio;
 #[cfg(feature = "async_runtime_async_std")]
 mod async_std;
 
-use std::pin::Pin;
-use std::future::Future;
-use std::task::{Context as Cntx, Poll};
-use std::time::Duration;
 use anyhow::Context;
 use futures::task::SpawnExt;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context as Cntx, Poll};
+use std::time::Duration;
 
-use crate::globals::Global;
 use crate::error::*;
+use crate::globals::Global;
 
 #[cfg(feature = "async_runtime_tokio")]
 static mut RUNTIME: Global<tokio::Runtime> = Global::new();
@@ -28,7 +28,7 @@ macro_rules! runtime {
             Some(ref rt) => rt,
             None => panic!("Async runtime wasn't initialized"),
         }
-    }
+    };
 }
 
 /// A `JoinHandle` represents a future that can be awaited on.
@@ -49,10 +49,14 @@ pub struct JoinHandle<T> {
 /// It should be called once before the core protocol starts executing.
 pub unsafe fn init(num_threads: usize) -> Result<()> {
     #[cfg(feature = "async_runtime_tokio")]
-    { tokio::init(num_threads).map(|rt| RUNTIME.set(rt)) }
+    {
+        tokio::init(num_threads).map(|rt| RUNTIME.set(rt))
+    }
 
     #[cfg(feature = "async_runtime_async_std")]
-    { async_std::init(num_threads).map(|rt| RUNTIME.set(rt)) }
+    {
+        async_std::init(num_threads).map(|rt| RUNTIME.set(rt))
+    }
 }
 
 /// This function drops the async runtime.

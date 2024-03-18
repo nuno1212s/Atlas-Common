@@ -1,20 +1,19 @@
 //! FIFO channels used to send messages between async tasks.
 
+use anyhow::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use anyhow::Error;
 
+use crate::error::*;
+use crate::Err;
 use futures::future::FusedFuture;
 use futures::TryFutureExt;
 use log::{error, warn};
 use thiserror::Error;
-use crate::Err;
-use crate::error::*;
-
 
 #[cfg(feature = "channel_futures_mpsc")]
 mod futures_mpsc;
@@ -89,7 +88,6 @@ impl<T> Clone for ChannelAsyncRx<T> {
 }
 
 impl<T> ChannelAsyncTx<T> {
-
     //Can have length because future mpsc doesn't implement it
 
     //Asynchronously send message through channel
@@ -130,11 +128,17 @@ impl<'a, T> FusedFuture for ChannelRxFut<'a, T> {
 pub fn new_bounded_async<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelAsyncRx<T>) {
     let (tx, rx) = {
         #[cfg(feature = "channel_futures_mpsc")]
-        { futures_mpsc::new_bounded(bound) }
+        {
+            futures_mpsc::new_bounded(bound)
+        }
         #[cfg(feature = "channel_flume_mpmc")]
-        { flume_mpmc::new_bounded(bound) }
+        {
+            flume_mpmc::new_bounded(bound)
+        }
         #[cfg(feature = "channel_async_channel_mpmc")]
-        { async_channel_mpmc::new_bounded(bound) }
+        {
+            async_channel_mpmc::new_bounded(bound)
+        }
     };
 
     let ttx = ChannelAsyncTx { inner: tx };
@@ -193,7 +197,9 @@ impl<T> ChannelSyncTx<T> {
 
     #[inline]
     pub fn send(&self, value: T) -> Result<()> {
-        self.send_return(value).map_err(SendError::from).map_err(anyhow::Error::from)
+        self.send_return(value)
+            .map_err(SendError::from)
+            .map_err(anyhow::Error::from)
     }
 
     #[inline]
@@ -202,23 +208,19 @@ impl<T> ChannelSyncTx<T> {
             Ok(_) => {
                 return Ok(());
             }
-            Err(err) => {
-                match err {
-                    TrySendReturnError::Full(value) => {
-                        error!("Failed to insert into channel. Channel is full and could not directly insert, blocking. {:?}", self.channel_identifier);
+            Err(err) => match err {
+                TrySendReturnError::Full(value) => {
+                    error!("Failed to insert into channel. Channel is full and could not directly insert, blocking. {:?}", self.channel_identifier);
 
-                        value
-                    }
-                    TrySendReturnError::Disconnected(value) => {
-                        error!("Channel is disconnected");
-
-                        value
-                    }
-                    TrySendReturnError::Timeout(value) => {
-                        value
-                    }
+                    value
                 }
-            }
+                TrySendReturnError::Disconnected(value) => {
+                    error!("Channel is disconnected");
+
+                    value
+                }
+                TrySendReturnError::Timeout(value) => value,
+            },
         };
 
         self.inner.send(value)
@@ -226,17 +228,25 @@ impl<T> ChannelSyncTx<T> {
 
     #[inline]
     pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<()> {
-        self.send_timeout_return(value, timeout).map_err(TrySendError::from).map_err(anyhow::Error::from)
+        self.send_timeout_return(value, timeout)
+            .map_err(TrySendError::from)
+            .map_err(anyhow::Error::from)
     }
 
     #[inline]
-    pub fn send_timeout_return(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendReturnError<T>> {
+    pub fn send_timeout_return(
+        &self,
+        value: T,
+        timeout: Duration,
+    ) -> std::result::Result<(), TrySendReturnError<T>> {
         self.inner.send_timeout(value, timeout)
     }
 
     #[inline]
     pub fn try_send(&self, value: T) -> Result<()> {
-        self.try_send_return(value).map_err(TrySendError::from).map_err(anyhow::Error::from)
+        self.try_send_return(value)
+            .map_err(TrySendError::from)
+            .map_err(anyhow::Error::from)
     }
 
     #[inline]
@@ -264,24 +274,44 @@ impl<T> Clone for ChannelSyncRx<T> {
 }
 
 #[inline]
-pub fn new_bounded_sync<T>(bound: usize, name: Option<impl Into<String>>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+pub fn new_bounded_sync<T>(
+    bound: usize,
+    name: Option<impl Into<String>>,
+) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
     let name = name.map(|string| Arc::from(string.into()));
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {
         let (tx, rx) = crossbeam::new_bounded(bound);
 
-        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name.clone(), inner: rx })
+        (
+            ChannelSyncTx {
+                channel_identifier: name.clone(),
+                inner: tx,
+            },
+            ChannelSyncRx {
+                name: name.clone(),
+                inner: rx,
+            },
+        )
     }
 
     #[cfg(feature = "channel_sync_flume")]
     {
         let (tx, rx) = flume_mpmc::new_bounded(bound);
 
-        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name, inner: rx })
+        (
+            ChannelSyncTx {
+                channel_identifier: name.clone(),
+                inner: tx,
+            },
+            ChannelSyncRx {
+                name: name,
+                inner: rx,
+            },
+        )
     }
 }
-
 
 #[inline]
 pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
@@ -291,14 +321,32 @@ pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSy
     {
         let (tx, rx) = crossbeam::new_unbounded();
 
-        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name.clone(), inner: rx })
+        (
+            ChannelSyncTx {
+                channel_identifier: name.clone(),
+                inner: tx,
+            },
+            ChannelSyncRx {
+                name: name.clone(),
+                inner: rx,
+            },
+        )
     }
 
     #[cfg(feature = "channel_sync_flume")]
     {
         let (tx, rx) = flume_mpmc::new_unbounded();
 
-        (ChannelSyncTx { channel_identifier: name.clone(), inner: tx }, ChannelSyncRx { name: name.clone(), inner: rx })
+        (
+            ChannelSyncTx {
+                channel_identifier: name.clone(),
+                inner: tx,
+            },
+            ChannelSyncRx {
+                name: name.clone(),
+                inner: rx,
+            },
+        )
     }
 }
 
@@ -324,9 +372,7 @@ impl<T> ChannelMixedRx<T> {
     #[inline]
     pub fn recv(&self) -> Result<T> {
         match self.inner.recv_sync() {
-            Ok(res) => {
-                Ok(res)
-            }
+            Ok(res) => Ok(res),
             Err(_err) => {
                 Err!(RecvError::ChannelDc)
             }
@@ -336,9 +382,7 @@ impl<T> ChannelMixedRx<T> {
     #[inline]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T> {
         match self.inner.recv_timeout(timeout) {
-            Ok(result) => {
-                Ok(result)
-            }
+            Ok(result) => Ok(result),
             Err(_err) => {
                 Err!(RecvError::ChannelDc)
             }
@@ -348,9 +392,7 @@ impl<T> ChannelMixedRx<T> {
     #[inline]
     pub async fn recv_async(&mut self) -> Result<T> {
         match self.inner.recv().await {
-            Ok(val) => {
-                Ok(val)
-            }
+            Ok(val) => Ok(val),
             Err(_err) => {
                 Err!(RecvError::ChannelDc)
             }
@@ -371,7 +413,10 @@ impl<T> ChannelMixedTx<T> {
 
     #[inline]
     pub async fn send_async(&self, value: T) -> Result<()> {
-        self.send_async_return(value).await.map_err(SendError::from).map_err(anyhow::Error::from)
+        self.send_async_return(value)
+            .await
+            .map_err(SendError::from)
+            .map_err(anyhow::Error::from)
     }
 
     #[inline]
@@ -381,7 +426,9 @@ impl<T> ChannelMixedTx<T> {
 
     #[inline]
     pub fn send(&self, value: T) -> Result<()> {
-        self.send_return(value).map_err(SendError::from).map_err(anyhow::Error::from)
+        self.send_return(value)
+            .map_err(SendError::from)
+            .map_err(anyhow::Error::from)
     }
 
     #[inline]
@@ -390,16 +437,19 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), SendReturnError<T>> {
+    pub fn send_timeout(
+        &self,
+        value: T,
+        timeout: Duration,
+    ) -> std::result::Result<(), SendReturnError<T>> {
         self.inner.send_timeout(value, timeout)
     }
 }
 
-
 impl<T> Clone for ChannelMixedTx<T> {
     fn clone(&self) -> Self {
         ChannelMixedTx {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -407,7 +457,7 @@ impl<T> Clone for ChannelMixedTx<T> {
 impl<T> Clone for ChannelMixedRx<T> {
     fn clone(&self) -> Self {
         ChannelMixedRx {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -479,7 +529,7 @@ impl<T> ChannelMultRx<T> {
 impl<T> Clone for ChannelMultRx<T> {
     fn clone(&self) -> Self {
         ChannelMultRx {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -487,7 +537,7 @@ impl<T> Clone for ChannelMultRx<T> {
 impl<T> Clone for ChannelMultTx<T> {
     fn clone(&self) -> Self {
         ChannelMultTx {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -500,9 +550,9 @@ pub fn new_bounded_mult<T>(bound: usize) -> (ChannelMultTx<T>, ChannelMultRx<T>)
 }
 
 /*
-  One shot channels
-  @{
- */
+ One shot channels
+ @{
+*/
 
 pub type OneShotTx<T> = oneshot_spsc::OneShotTx<T>;
 
@@ -555,7 +605,7 @@ pub enum TrySendReturnError<T> {
 #[derive(Error, Debug)]
 pub enum SendError {
     #[error("Failed to send message")]
-    FailedToSend
+    FailedToSend,
 }
 
 #[derive(Error, Debug)]
@@ -571,7 +621,7 @@ pub enum TrySendError {
 #[derive(Error)]
 pub enum SendReturnError<T> {
     #[error("Failed to send message, channel disconnected")]
-    FailedToSend(T)
+    FailedToSend(T),
 }
 
 unsafe impl<T> Send for SendReturnError<T> {}
@@ -596,22 +646,18 @@ impl<T> Debug for TrySendReturnError<T> {
 
 impl<T> From<SendReturnError<T>> for SendError {
     fn from(value: SendReturnError<T>) -> Self {
-        match value { SendReturnError::FailedToSend(_) => SendError::FailedToSend }
+        match value {
+            SendReturnError::FailedToSend(_) => SendError::FailedToSend,
+        }
     }
 }
 
 impl<T> From<TrySendReturnError<T>> for TrySendError {
     fn from(value: TrySendReturnError<T>) -> Self {
         match value {
-            TrySendReturnError::Disconnected(_) => {
-                TrySendError::Disconnected
-            }
-            TrySendReturnError::Timeout(_) => {
-                TrySendError::Timeout
-            }
-            TrySendReturnError::Full(_) => {
-                TrySendError::Full
-            }
+            TrySendReturnError::Disconnected(_) => TrySendError::Disconnected,
+            TrySendReturnError::Timeout(_) => TrySendError::Timeout,
+            TrySendReturnError::Full(_) => TrySendError::Full,
         }
     }
 }

@@ -1,22 +1,22 @@
 //#[cfg(feature = "serialize_serde")]
 //mod other;
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::io::Write;
+use super::PrivateKeyPart;
+use super::PublicKeySet;
+use crate::error::*;
+use crate::Err;
 use getset::{CopyGetters, Getters, MutGetters, Setters};
-use thiserror::Error;
-use threshold_crypto::{Fr, G1Affine};
+use serde::Serializer;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use serde::Serializer;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::io::Write;
+use thiserror::Error;
 use threshold_crypto::ff::Field;
 use threshold_crypto::group::CurveAffine;
 use threshold_crypto::poly::{BivarCommitment, BivarPoly, Poly};
 use threshold_crypto::serde_impl::FieldWrap;
-use super::PrivateKeyPart;
-use super::PublicKeySet;
-use crate::Err;
-use crate::error::*;
+use threshold_crypto::{Fr, G1Affine};
 
 /// The parameters for a distributed key generation algorithm.
 #[derive(Getters, CopyGetters)]
@@ -107,7 +107,6 @@ pub struct DistributedKeyGenerator {
 
 impl DistributedKeyGenerator {
     pub fn new(params: DKGParams, our_id: usize) -> Result<(Self, DealerPart)> {
-
         let mut rng = rand::rngs::OsRng::default();
 
         let my_gen = BivarPoly::random(params.faulty_nodes(), &mut rng);
@@ -173,22 +172,31 @@ impl DistributedKeyGenerator {
 
         let mut sk = Fr::zero();
 
-        let completed_node_vec: Vec<_> = self.received_parts.values().filter(|part| part.is_complete(self.params.faulty_nodes())).collect();
+        let completed_node_vec: Vec<_> = self
+            .received_parts
+            .values()
+            .filter(|part| part.is_complete(self.params.faulty_nodes()))
+            .collect();
 
         let completed_nodes = completed_node_vec.len();
 
         if completed_nodes <= self.params.faulty_nodes() {
-            return Err!(DKGError::NotEnoughFinishedDealers(completed_nodes, self.params.faulty_nodes()));
+            return Err!(DKGError::NotEnoughFinishedDealers(
+                completed_nodes,
+                self.params.faulty_nodes()
+            ));
         }
 
         for node_info in completed_node_vec {
             pk += node_info.commit.row(0);
 
-            let row = Poly::interpolate(node_info.values.iter()
-                .take(self.params.faulty_nodes() + 1)
-                .map(|(i, v)| {
-                    (i, v)
-                }));
+            let row = Poly::interpolate(
+                node_info
+                    .values
+                    .iter()
+                    .take(self.params.faulty_nodes() + 1)
+                    .map(|(i, v)| (i, v)),
+            );
 
             sk.add_assign(&row.evaluate(0));
         }
@@ -204,8 +212,15 @@ impl DistributedKeyGenerator {
     /// which we have already verified is valid.
     //TODO: Since we only require the row that is meant for us, does the dealer part have to contain all rows? Seems like
     // a waste of bandwidth
-    fn inner_handle_dealer_part(&mut self, sender: usize,
-                                DealerPart { commitment: commit, share_values: mut rows, .. }: DealerPart) -> Result<Poly> {
+    fn inner_handle_dealer_part(
+        &mut self,
+        sender: usize,
+        DealerPart {
+            commitment: commit,
+            share_values: mut rows,
+            ..
+        }: DealerPart,
+    ) -> Result<Poly> {
         if rows.len() != self.params.dealers() {
             return Err!(DealerPartError::WrongPartCount);
         }
@@ -221,16 +236,26 @@ impl DistributedKeyGenerator {
 
         // Get our row from the commitment that we have received from the bivar polynomial
         let commit_row = commit.row(self.our_id);
-        eprintln!("Dealer part {}: Getting row from myself: {:?} our id {}", self.our_id, commit_row, self.our_id);
+        eprintln!(
+            "Dealer part {}: Getting row from myself: {:?} our id {}",
+            self.our_id, commit_row, self.our_id
+        );
 
-        self.received_parts.insert(sender, NodeState::initialize(sender, commit));
+        self.received_parts
+            .insert(sender, NodeState::initialize(sender, commit));
 
         // Get the row that is meant for us
         let row = rows.swap_remove(self.our_id - 1);
 
         let row: Poly = bincode::deserialize(&row)?;
 
-        eprintln!("Dealer part {}: Received row from dealer {}: {:?} in ID {}", self.our_id, sender, row, self.our_id - 1);
+        eprintln!(
+            "Dealer part {}: Received row from dealer {}: {:?} in ID {}",
+            self.our_id,
+            sender,
+            row,
+            self.our_id - 1
+        );
 
         // If the row's commitment does not equal the commitment that we have received calculated for our row
         // then the part is invalid
@@ -249,15 +274,28 @@ impl DistributedKeyGenerator {
         Ok(row.clone())
     }
 
-    fn inner_handle_dealer_ack(&mut self, sender: usize, Ack { author, mut commitments, part_being_acked: confirmed }: Ack) -> Result<()> {
+    fn inner_handle_dealer_ack(
+        &mut self,
+        sender: usize,
+        Ack {
+            author,
+            mut commitments,
+            part_being_acked: confirmed,
+        }: Ack,
+    ) -> Result<()> {
         let mut part = self.received_parts.get_mut(&confirmed);
 
         if part.is_none() {
-            let ack = Ack { author, part_being_acked: confirmed, commitments };
+            let ack = Ack {
+                author,
+                part_being_acked: confirmed,
+                commitments,
+            };
 
-
-            self.pending_acks.entry(confirmed).or_insert_with(VecDeque::new).push_back((sender,
-                                                                                        ack));
+            self.pending_acks
+                .entry(confirmed)
+                .or_insert_with(VecDeque::new)
+                .push_back((sender, ack));
 
             return Ok(());
         }
@@ -266,9 +304,17 @@ impl DistributedKeyGenerator {
 
         let received_value = commitments.swap_remove(self.our_id - 1);
 
-        let received_value = bincode::deserialize::<FieldWrap<Fr>>(&received_value).unwrap().into_inner();
+        let received_value = bincode::deserialize::<FieldWrap<Fr>>(&received_value)
+            .unwrap()
+            .into_inner();
 
-        eprintln!("Dealer ack {}: Received ack from dealer {}: {:?} in ID {}", self.our_id, sender, received_value, self.our_id - 1);
+        eprintln!(
+            "Dealer ack {}: Received ack from dealer {}: {:?} in ID {}",
+            self.our_id,
+            sender,
+            received_value,
+            self.our_id - 1
+        );
 
         if part.commit.evaluate(self.our_id, sender) != G1Affine::one().mul(received_value) {
             return Err!(AckError::WrongCommitment(sender, confirmed));
@@ -350,8 +396,10 @@ impl DKGParams {
 
 #[derive(Debug, Error)]
 pub enum DKGError {
-    #[error("There were not enough finished dealers to finalize the DKG protocol {0} (needed {1})")]
-    NotEnoughFinishedDealers(usize, usize)
+    #[error(
+        "There were not enough finished dealers to finalize the DKG protocol {0} (needed {1})"
+    )]
+    NotEnoughFinishedDealers(usize, usize),
 }
 
 #[derive(Debug, Error)]
@@ -360,7 +408,9 @@ pub enum AckError {
     MissingPart,
     #[error("We have already received an Ack from {0} about dealer {1}")]
     AlreadyReceivedAck(usize, usize),
-    #[error("The Ack received from {0} about dealer {1} is invalid as the commitment does not match up")]
+    #[error(
+        "The Ack received from {0} about dealer {1} is invalid as the commitment does not match up"
+    )]
     WrongCommitment(usize, usize),
 }
 
@@ -378,19 +428,23 @@ pub enum DealerPartError {
 
 #[cfg(test)]
 pub mod dkg_test {
+    use crate::channel;
+    use crate::channel::{ChannelSyncRx, ChannelSyncTx};
+    use crate::crypto::threshold_crypto::thold_crypto::dkg::{
+        Ack, DKGParams, DealerPart, DistributedKeyGenerator,
+    };
+    use crate::crypto::threshold_crypto::thold_crypto::{
+        PrivateKeyPart, PublicKeySet, SecretKeySet,
+    };
+    use crate::error::*;
+    use anyhow::anyhow;
+    use getset::{CopyGetters, Getters};
+    use rand::Rng;
     use std::io::stderr;
     use std::iter;
     use std::sync::Arc;
     use std::thread::JoinHandle;
     use std::time::Duration;
-    use anyhow::anyhow;
-    use getset::{CopyGetters, Getters};
-    use rand::Rng;
-    use crate::error::*;
-    use crate::channel;
-    use crate::channel::{ChannelSyncRx, ChannelSyncTx};
-    use crate::crypto::threshold_crypto::thold_crypto::dkg::{Ack, DealerPart, DistributedKeyGenerator, DKGParams};
-    use crate::crypto::threshold_crypto::thold_crypto::{PrivateKeyPart, PublicKeySet, SecretKeySet};
 
     const DEALERS: usize = 4;
     const FAULTY_NODES: usize = 1;
@@ -431,7 +485,10 @@ pub mod dkg_test {
         for node in 1..=DEALERS {
             let pk_part = sec_key_set.get_key_share(node).unwrap();
 
-            assert_eq!(pk_part.public_key_part(), pk_set.get_public_key_part(node).unwrap());
+            assert_eq!(
+                pk_part.public_key_part(),
+                pk_set.get_public_key_part(node).unwrap()
+            );
         }
     }
 
@@ -447,19 +504,34 @@ pub mod dkg_test {
 
             assert_eq!(pk.get_public_key_part(node).unwrap(), sk.public_key_part());
 
-            pk.verify_partial_signature(node, DATA_TO_SIGN, &signature).unwrap();
+            pk.verify_partial_signature(node, DATA_TO_SIGN, &signature)
+                .unwrap();
 
             sigs.push(signature);
         }
 
-        let combined_signatures = sigs.iter().enumerate().map(|(i, sig)| (i, sig.clone())).collect::<Vec<_>>();
+        let combined_signatures = sigs
+            .iter()
+            .enumerate()
+            .map(|(i, sig)| (i, sig.clone()))
+            .collect::<Vec<_>>();
 
         for node in 1..=NODES {
             let (pk, sk) = &node_keys[node - 1];
 
-            let signature = pk.combine_signatures(combined_signatures.iter().cloned().take(FAULTY_NODES + 1).collect::<Vec<_>>().as_slice()).unwrap();
+            let signature = pk
+                .combine_signatures(
+                    combined_signatures
+                        .iter()
+                        .cloned()
+                        .take(FAULTY_NODES + 1)
+                        .collect::<Vec<_>>()
+                        .as_slice(),
+                )
+                .unwrap();
 
-            pk.verify_combined_signature(DATA_TO_SIGN, &signature).unwrap();
+            pk.verify_combined_signature(DATA_TO_SIGN, &signature)
+                .unwrap();
         }
     }
 
@@ -487,24 +559,30 @@ pub mod dkg_test {
     fn generate_keys_for_nodes_sync() -> Vec<(PublicKeySet, PrivateKeyPart)> {
         let mut parts = Vec::new();
 
-        let mut participating_nodes = (1..=NODES).map(|node_id| {
-            let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None);
+        let mut participating_nodes = (1..=NODES)
+            .map(|node_id| {
+                let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None);
 
-            let (dkg, part) = DistributedKeyGenerator::new(DKGParams {
-                dealers: DEALERS,
-                faulty_nodes: FAULTY_NODES,
-            }, node_id).unwrap();
+                let (dkg, part) = DistributedKeyGenerator::new(
+                    DKGParams {
+                        dealers: DEALERS,
+                        faulty_nodes: FAULTY_NODES,
+                    },
+                    node_id,
+                )
+                .unwrap();
 
-            let node = Node {
-                id: node_id,
-                dkg,
-                rx_channel: rx,
-            };
+                let node = Node {
+                    id: node_id,
+                    dkg,
+                    rx_channel: rx,
+                };
 
-            parts.push((node_id, part));
+                parts.push((node_id, part));
 
-            node
-        }).collect::<Vec<_>>();
+                node
+            })
+            .collect::<Vec<_>>();
 
         println!("Parts: {:?}", parts.len());
 
@@ -514,7 +592,10 @@ pub mod dkg_test {
             let (dealer_id, mut part) = part.clone();
 
             participating_nodes.iter_mut().for_each(|(node)| {
-                let ack = node.dkg.handle_part(dealer_id, part.clone()).expect("Failed to handle dealer part");
+                let ack = node
+                    .dkg
+                    .handle_part(dealer_id, part.clone())
+                    .expect("Failed to handle dealer part");
 
                 if node.id <= (FAULTY_NODES * 2) + 1 {
                     acks.push((node.id, ack));
@@ -526,61 +607,97 @@ pub mod dkg_test {
             participating_nodes.iter_mut().for_each(|(node)| {
                 assert!(!node.dkg.is_ready());
 
-                node.dkg.handle_ack(*node_id, ack.clone()).expect("Failed to handle ack");
+                node.dkg
+                    .handle_ack(*node_id, ack.clone())
+                    .expect("Failed to handle ack");
             })
         });
 
-        participating_nodes.into_iter().map(|(node)| {
-            assert!(node.dkg.is_ready());
+        participating_nodes
+            .into_iter()
+            .map(|(node)| {
+                assert!(node.dkg.is_ready());
 
-            let (pk, sk) = node.dkg.finalize().unwrap();
+                let (pk, sk) = node.dkg.finalize().unwrap();
 
-            (pk, sk)
-        }).collect()
+                (pk, sk)
+            })
+            .collect()
     }
 
-    fn generate_keys_for_nodes() -> Vec<(PublicKeySet, PrivateKeyPart, ChannelSyncRx<NodeMessage>, Vec<(usize, usize)>)> {
-        let participating_nodes = (1..=NODES).map(|node_id| {
-            let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None);
+    fn generate_keys_for_nodes() -> Vec<(
+        PublicKeySet,
+        PrivateKeyPart,
+        ChannelSyncRx<NodeMessage>,
+        Vec<(usize, usize)>,
+    )> {
+        let participating_nodes = (1..=NODES)
+            .map(|node_id| {
+                let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None);
 
-            let (dkg, part) = DistributedKeyGenerator::new(DKGParams {
-                dealers: DEALERS,
-                faulty_nodes: FAULTY_NODES,
-            }, node_id).unwrap();
+                let (dkg, part) = DistributedKeyGenerator::new(
+                    DKGParams {
+                        dealers: DEALERS,
+                        faulty_nodes: FAULTY_NODES,
+                    },
+                    node_id,
+                )
+                .unwrap();
 
-            let node = Node {
-                id: node_id,
-                dkg,
-                rx_channel: rx,
-            };
+                let node = Node {
+                    id: node_id,
+                    dkg,
+                    rx_channel: rx,
+                };
 
-            (node, part, tx)
-        }).collect::<Vec<_>>();
+                (node, part, tx)
+            })
+            .collect::<Vec<_>>();
 
         let channel_db = Arc::new(ChannelDB {
-            channels: participating_nodes.iter().map(|(_, _, tx)| tx.clone()).collect(),
+            channels: participating_nodes
+                .iter()
+                .map(|(_, _, tx)| tx.clone())
+                .collect(),
         });
 
-        let mut threads: Vec<_> = participating_nodes.into_iter()
+        let mut threads: Vec<_> = participating_nodes
+            .into_iter()
             .zip(iter::repeat_with(|| channel_db.clone()))
-            .map(|((node, part, tx), db)| {
-                std::thread::spawn(|| run_node(node, part, db))
-            }).collect();
+            .map(|((node, part, tx), db)| std::thread::spawn(|| run_node(node, part, db)))
+            .collect();
 
-        threads.into_iter().map(JoinHandle::join).map(|r| r.unwrap()).collect()
+        threads
+            .into_iter()
+            .map(JoinHandle::join)
+            .map(|r| r.unwrap())
+            .collect()
     }
 
-    fn run_node(mut node: Node, dealer_part: DealerPart, txs: Arc<ChannelDB>) -> (PublicKeySet, PrivateKeyPart, ChannelSyncRx<NodeMessage>, Vec<(usize, usize)>) {
+    fn run_node(
+        mut node: Node,
+        dealer_part: DealerPart,
+        txs: Arc<ChannelDB>,
+    ) -> (
+        PublicKeySet,
+        PrivateKeyPart,
+        ChannelSyncRx<NodeMessage>,
+        Vec<(usize, usize)>,
+    ) {
         println!("Running node {}", node.id);
 
         //std::thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 100)));
 
-        let result: Result<()> = txs.channels.iter().map(|tx| {
-            tx.send(NodeMessage {
-                from: node.id,
-                msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
+        let result: Result<()> = txs
+            .channels
+            .iter()
+            .map(|tx| {
+                tx.send(NodeMessage {
+                    from: node.id,
+                    msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
+                })
             })
-        }).collect();
+            .collect();
 
         result.expect("Failed to send dealer part");
 
@@ -594,15 +711,22 @@ pub mod dkg_test {
                     NodeMessageType::DealerPart(part) => {
                         match node.dkg.handle_part(sender_id, part) {
                             Ok(ack) => {
-                                let res: Result<()> = txs.channels.iter().map(|tx| {
-                                    tx.send(NodeMessage {
-                                        from: node.id,
-                                        msg_type: NodeMessageType::Ack(ack.clone()),
+                                let res: Result<()> = txs
+                                    .channels
+                                    .iter()
+                                    .map(|tx| {
+                                        tx.send(NodeMessage {
+                                            from: node.id,
+                                            msg_type: NodeMessageType::Ack(ack.clone()),
+                                        })
                                     })
-                                }).collect();
+                                    .collect();
 
                                 res.expect("Failed to send ack");
-                                eprintln!("Client {} received dealer part from {}", node.id, sender_id);
+                                eprintln!(
+                                    "Client {} received dealer part from {}",
+                                    node.id, sender_id
+                                );
                             }
                             Err(err) => {
                                 panic!("Client {} experienced error: {:?}", node.id, err);
@@ -613,7 +737,10 @@ pub mod dkg_test {
                         let about = ack.part_being_acked;
                         match node.dkg.handle_ack(sender_id, ack) {
                             Ok(_) => {
-                                eprintln!("Client {} received ack from {} about {}", node.id, sender_id, about);
+                                eprintln!(
+                                    "Client {} received ack from {} about {}",
+                                    node.id, sender_id, about
+                                );
                                 ack_reception_order.push((sender_id, about));
                             }
                             Err(err) => {
@@ -624,7 +751,12 @@ pub mod dkg_test {
                 }
 
                 if node.dkg.complete() >= DEALERS {
-                    eprintln!("Client {} has finished the DKG protocol with {}, needed {}", node.id, node.dkg.complete(), FAULTY_NODES);
+                    eprintln!(
+                        "Client {} has finished the DKG protocol with {}, needed {}",
+                        node.id,
+                        node.dkg.complete(),
+                        FAULTY_NODES
+                    );
 
                     let Node {
                         id,
@@ -644,9 +776,7 @@ pub mod dkg_test {
         }
     }
 
-
-    impl ChannelDB
-    {
+    impl ChannelDB {
         pub fn get_channel(&self, to: usize) -> &ChannelSyncTx<NodeMessage> {
             &self.channels[to - 1]
         }

@@ -1,10 +1,10 @@
 pub mod thold_crypto;
 //mod frost;
 
+use crate::error::*;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 use threshold_crypto::{Fr, IntoFr};
-use crate::error::*;
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
@@ -57,11 +57,15 @@ impl PublicKey {}
 
 impl PublicKeySet {
     pub fn public_key(&self) -> PublicKey {
-        PublicKey { key: self.key.public_key() }
+        PublicKey {
+            key: self.key.public_key(),
+        }
     }
 
     pub fn public_key_share(&self, index: usize) -> Result<PublicKeyPart> {
-        Ok(PublicKeyPart { key: self.key.get_public_key_part(index)? })
+        Ok(PublicKeyPart {
+            key: self.key.get_public_key_part(index)?,
+        })
     }
 
     pub fn verify(&self, msg: &[u8], sig: &Signature) -> Result<()> {
@@ -71,11 +75,18 @@ impl PublicKeySet {
     }
 
     pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature>
-        where I: IntoIterator<Item=(T, &'a PartialSignature)>,
-              T: IntoFr {
-        let map = sigs.into_iter().map(|(id, sig)| (id, &sig.sig)).collect::<Vec<_>>();
+    where
+        I: IntoIterator<Item = (T, &'a PartialSignature)>,
+        T: IntoFr,
+    {
+        let map = sigs
+            .into_iter()
+            .map(|(id, sig)| (id, &sig.sig))
+            .collect::<Vec<_>>();
 
-        Ok(Signature { sig: self.key.combine_signatures(map)? })
+        Ok(Signature {
+            sig: self.key.combine_signatures(map)?,
+        })
     }
 }
 
@@ -87,15 +98,20 @@ impl PublicKeyPart {
 
 impl PrivateKeyPart {
     pub fn public_key_part(&self) -> PublicKeyPart {
-        PublicKeyPart { key: self.key.public_key_part() }
+        PublicKeyPart {
+            key: self.key.public_key_part(),
+        }
     }
 
     pub fn partially_sign(&self, msg: &[u8]) -> Result<PartialSignature> {
-        Ok(PartialSignature { sig: self.key.partially_sign(msg)? })
+        Ok(PartialSignature {
+            sig: self.key.partially_sign(msg)?,
+        })
     }
 
     pub fn from_mut(sk: &mut Fr) -> Self {
-        PrivateKeyPart { key: thold_crypto::PrivateKeyPart::from_mut(sk) }
+        PrivateKeyPart {
+            key: thold_crypto::PrivateKeyPart::from_mut(sk),
+        }
     }
 }
-

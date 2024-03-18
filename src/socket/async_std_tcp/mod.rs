@@ -1,12 +1,12 @@
+use futures::{AsyncRead, AsyncReadExt, AsyncWrite};
 use std::io;
-use std::pin::Pin;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
-use std::task::{Poll, Context};
-use futures::{AsyncRead, AsyncReadExt, AsyncWrite};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-use async_std::net::{TcpListener, TcpStream};
 use crate::error::*;
+use async_std::net::{TcpListener, TcpStream};
 
 pub struct Listener {
     inner: TcpListener,
@@ -33,8 +33,7 @@ impl AsyncRead for Socket {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -44,24 +43,15 @@ impl AsyncWrite for Socket {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -113,8 +103,7 @@ impl AsyncRead for Socket {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -124,24 +113,15 @@ impl AsyncWrite for Socket {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
-    ) -> Poll<io::Result<usize>>
-    {
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<io::Result<()>>
-    {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -149,13 +129,12 @@ impl AsyncWrite for Socket {
 pub(super) fn split_socket(sock: Socket) -> (WriteHalf, ReadHalf) {
     let (read, write) = sock.inner.split();
 
-    (WriteHalf { inner: write },
-     ReadHalf { inner: read })
+    (WriteHalf { inner: write }, ReadHalf { inner: read })
 }
 
 #[cfg(windows)]
 mod sys {
-    use std::os::windows::io::{RawSocket, AsRawSocket};
+    use std::os::windows::io::{AsRawSocket, RawSocket};
 
     impl AsRawSocket for super::Socket {
         fn as_raw_socket(&self) -> RawSocket {
@@ -172,7 +151,7 @@ mod sys {
 
 #[cfg(unix)]
 mod sys {
-    use std::os::unix::io::{RawFd, AsRawFd};
+    use std::os::unix::io::{AsRawFd, RawFd};
 
     impl AsRawFd for super::Socket {
         fn as_raw_fd(&self) -> RawFd {
