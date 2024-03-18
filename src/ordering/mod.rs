@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicI32;
 
 use either::{Either, Left, Right};
 
-
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 
@@ -123,7 +122,6 @@ impl SeqNo {
         const DROP_SEQNO_THRES: i32 = (PERIOD + (PERIOD >> 1)) as i32;
 
         let index = {
-            
             //TODO: Figure this out correctly
             /*if index < OVERFLOW_THRES_NEG || index > OVERFLOW_THRES_POS {
                 // guard against overflows

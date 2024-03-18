@@ -1,6 +1,5 @@
 //! FIFO channels used to send messages between async tasks.
 
-
 use std::fmt::{Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
@@ -12,7 +11,7 @@ use crate::error::*;
 use crate::Err;
 use futures::future::FusedFuture;
 use futures::TryFutureExt;
-use log::{error};
+use log::error;
 use thiserror::Error;
 
 #[cfg(feature = "channel_futures_mpsc")]

@@ -1,4 +1,3 @@
-
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +9,6 @@ use crate::Err;
 
 use ring::signature::Ed25519KeyPair;
 use ring::{signature as rsig, signature::KeyPair as RKeyPair, signature::ED25519_PUBLIC_KEY_LEN};
-
 
 use crate::error::*;
 
@@ -143,7 +141,7 @@ impl AsRef<[u8]> for Signature {
 
 #[cfg(test)]
 mod tests {
-    use super::{KeyPair};
+    use super::KeyPair;
 
     #[test]
     fn test_sign_verify() {

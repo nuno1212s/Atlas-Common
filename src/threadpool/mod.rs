@@ -73,8 +73,6 @@ impl Builder {
     pub fn build(self) -> ThreadPool {
         let inner = self.inner.build();
 
-        
-
         ThreadPool { inner }
     }
 

@@ -1,6 +1,5 @@
 use rayon::ThreadPoolBuilder;
 
-
 pub struct ThreadPool {
     inner: rayon::ThreadPool,
 }

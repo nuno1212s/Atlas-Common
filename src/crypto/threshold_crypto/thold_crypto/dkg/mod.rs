@@ -190,12 +190,8 @@ impl DistributedKeyGenerator {
         for node_info in completed_node_vec {
             pk += node_info.commit.row(0);
 
-            let row = Poly::interpolate(
-                node_info
-                    .values
-                    .iter()
-                    .take(self.params.faulty_nodes() + 1),
-            );
+            let row =
+                Poly::interpolate(node_info.values.iter().take(self.params.faulty_nodes() + 1));
 
             sk.add_assign(&row.evaluate(0));
         }
@@ -436,14 +432,12 @@ pub mod dkg_test {
         PrivateKeyPart, PublicKeySet, SecretKeySet,
     };
     use crate::error::*;
-    
+
     use getset::{CopyGetters, Getters};
-    
-    
+
     use std::iter;
     use std::sync::Arc;
     use std::thread::JoinHandle;
-    
 
     const DEALERS: usize = 4;
     const FAULTY_NODES: usize = 1;
@@ -509,20 +503,14 @@ pub mod dkg_test {
             sigs.push(signature);
         }
 
-        let combined_signatures = sigs
-            .iter()
-            .enumerate()
-            .collect::<Vec<_>>();
+        let combined_signatures = sigs.iter().enumerate().collect::<Vec<_>>();
 
         for node in 1..=NODES {
             let (pk, _sk) = &node_keys[node - 1];
 
             let signature = pk
                 .combine_signatures::<usize, _>(
-                    combined_signatures
-                        .iter()
-                        .take(FAULTY_NODES + 1)
-                        .cloned(),
+                    combined_signatures.iter().take(FAULTY_NODES + 1).cloned(),
                 )
                 .unwrap();
 
@@ -684,14 +672,12 @@ pub mod dkg_test {
 
         //std::thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 100)));
 
-        let result: Result<()> = txs
-            .channels
-            .iter().try_for_each(|tx| {
-                tx.send(NodeMessage {
-                    from: node.id,
-                    msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
-                })
-            });
+        let result: Result<()> = txs.channels.iter().try_for_each(|tx| {
+            tx.send(NodeMessage {
+                from: node.id,
+                msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
+            })
+        });
 
         result.expect("Failed to send dealer part");
 
@@ -705,14 +691,12 @@ pub mod dkg_test {
                     NodeMessageType::DealerPart(part) => {
                         match node.dkg.handle_part(sender_id, part) {
                             Ok(ack) => {
-                                let res: Result<()> = txs
-                                    .channels
-                                    .iter().try_for_each(|tx| {
-                                        tx.send(NodeMessage {
-                                            from: node.id,
-                                            msg_type: NodeMessageType::Ack(ack.clone()),
-                                        })
-                                    });
+                                let res: Result<()> = txs.channels.iter().try_for_each(|tx| {
+                                    tx.send(NodeMessage {
+                                        from: node.id,
+                                        msg_type: NodeMessageType::Ack(ack.clone()),
+                                    })
+                                });
 
                                 res.expect("Failed to send ack");
                                 eprintln!(

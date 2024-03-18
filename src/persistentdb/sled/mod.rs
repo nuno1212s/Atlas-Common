@@ -1,5 +1,5 @@
 use crate::error::*;
-use anyhow::{Context};
+use anyhow::Context;
 use std::path::Path;
 
 pub(crate) struct SledKVDB {
@@ -18,9 +18,7 @@ impl SledKVDB {
             let _ = db_handle.open_tree(prefix)?;
         }
 
-        Ok(Self {
-            db_handle,
-        })
+        Ok(Self { db_handle })
     }
 
     fn get_tree(&self, prefix: &str) -> Result<sled::Tree> {

@@ -1,7 +1,7 @@
-use anyhow::{anyhow};
+use anyhow::anyhow;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use threshold_crypto::poly::{Commitment};
+use threshold_crypto::poly::Commitment;
 use threshold_crypto::{Fr, IntoFr};
 
 use crate::error::*;
