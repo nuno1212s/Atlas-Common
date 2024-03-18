@@ -1,4 +1,4 @@
-use anyhow::Context;
+
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 
@@ -7,10 +7,10 @@ use serde_big_array::BigArray;
 
 use crate::crypto::signature::{SignError, VerifyError};
 use crate::Err;
-use ring::error::{KeyRejected, Unspecified};
+
 use ring::signature::Ed25519KeyPair;
 use ring::{signature as rsig, signature::KeyPair as RKeyPair, signature::ED25519_PUBLIC_KEY_LEN};
-use rustls::PrivateKey;
+
 
 use crate::error::*;
 
@@ -42,7 +42,7 @@ impl KeyPair {
             }
         };
 
-        let pk = sk.public_key().clone();
+        let pk = *sk.public_key();
 
         let pk_bytes = pk.as_ref();
 
@@ -59,7 +59,7 @@ impl KeyPair {
             }
         };
 
-        let pk = sk.public_key().clone();
+        let pk = *sk.public_key();
         let pk_bytes = pk.as_ref();
 
         let pk = PublicKey::from_bytes_unchecked(pk_bytes);
@@ -143,7 +143,7 @@ impl AsRef<[u8]> for Signature {
 
 #[cfg(test)]
 mod tests {
-    use super::{KeyPair, Signature};
+    use super::{KeyPair};
 
     #[test]
     fn test_sign_verify() {

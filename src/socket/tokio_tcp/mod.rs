@@ -1,8 +1,8 @@
 use futures::{AsyncRead, AsyncWrite};
 use std::io;
-use std::io::{Read, Write};
+
 use std::net::SocketAddr;
-use std::ops::{Deref, DerefMut};
+
 use std::pin::Pin;
 use std::task::{Context, Poll};
 

@@ -89,7 +89,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn recv<'a>(&'a mut self) -> ChannelRxFut<'a, T> {
+    pub fn recv(&mut self) -> ChannelRxFut<'_, T> {
         let inner = self.inner.recv_async();
         ChannelRxFut { inner }
     }

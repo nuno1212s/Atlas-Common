@@ -6,7 +6,7 @@ use std::ops::{Add, AddAssign};
 use std::sync::atomic::AtomicI32;
 
 use either::{Either, Left, Right};
-use log::{error, trace, warn};
+
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub const PERIOD: u32 = 100000000;
 /// Represents a sequence number attributed to a client request
 /// during a `Consensus` instance.
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Copy, Clone, Ord, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct SeqNo(i32);
 
 ///Represents a seq number for clients to safely use when working with concurrent requests
@@ -61,6 +61,12 @@ impl From<SeqNo> for u64 {
     #[inline]
     fn from(sequence_number: SeqNo) -> u64 {
         sequence_number.0 as u64
+    }
+}
+
+impl Ord for SeqNo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.partial_cmp(&other.0).unwrap()
     }
 }
 
@@ -117,7 +123,7 @@ impl SeqNo {
         const DROP_SEQNO_THRES: i32 = (PERIOD + (PERIOD >> 1)) as i32;
 
         let index = {
-            let index = (self.0).wrapping_sub(other.0);
+            
             //TODO: Figure this out correctly
             /*if index < OVERFLOW_THRES_NEG || index > OVERFLOW_THRES_POS {
                 // guard against overflows
@@ -127,10 +133,10 @@ impl SeqNo {
             } else {
                 index
             }*/
-            index
+            (self.0).wrapping_sub(other.0)
         };
 
-        if index < 0 || index > DROP_SEQNO_THRES {
+        if !(0..=DROP_SEQNO_THRES).contains(&index) {
             // drop old messages or messages whose seq no. is too
             // large, which may be due to a DoS attack of
             // a malicious node

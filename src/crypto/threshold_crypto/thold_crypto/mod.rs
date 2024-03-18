@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use threshold_crypto::poly::{Commitment, Poly};
+use threshold_crypto::poly::{Commitment};
 use threshold_crypto::{Fr, IntoFr};
 
 use crate::error::*;
@@ -74,7 +74,7 @@ impl PublicKeyPart {
 
 impl SecretKeySet {
     pub fn generate_random(n: usize) -> Result<SecretKeySet> {
-        let mut rand = rand::rngs::OsRng::default();
+        let mut rand = rand::rngs::OsRng;
 
         let sk_set = threshold_crypto::SecretKeySet::random(n, &mut rand);
 
@@ -107,7 +107,7 @@ impl PrivateKeyPart {
         Ok(PartialSignature { sig })
     }
 
-    pub fn from_mut(mut sk: &mut Fr) -> Self {
+    pub fn from_mut(sk: &mut Fr) -> Self {
         let key = threshold_crypto::SecretKeyShare::from_mut(sk);
 
         PrivateKeyPart { key }
@@ -176,7 +176,7 @@ impl PublicKeySet {
 
     #[inline(always)]
     pub fn verify_combined_signature(&self, msg: &[u8], sig: &Signature) -> Result<()> {
-        if self.public_key().verify_combined_signatures(&sig, msg) {
+        if self.public_key().verify_combined_signatures(sig, msg) {
             Ok(())
         } else {
             Err(anyhow!("Signature verification failed"))

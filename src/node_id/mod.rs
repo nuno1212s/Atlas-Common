@@ -73,6 +73,6 @@ impl From<NodeId> for u64 {
 impl From<NodeId> for u32 {
     #[inline]
     fn from(id: NodeId) -> u32 {
-        id.0 as u32
+        id.0
     }
 }

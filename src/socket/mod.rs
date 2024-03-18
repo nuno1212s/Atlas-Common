@@ -6,7 +6,7 @@ use std::io::{BufRead, ErrorKind, Read, Write};
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::task::{Context as Cntx, Poll};
 
 use either::Either;
@@ -17,7 +17,7 @@ use log::error;
 use mio::event::Source;
 use mio::{Interest, Registry, Token};
 
-use rustls::{ClientConnection, Error, IoState, ServerConnection, StreamOwned};
+use rustls::{ClientConnection, ServerConnection};
 use tokio_rustls::TlsStream;
 use tokio_util::compat::{
     Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
@@ -462,7 +462,7 @@ impl Write for SecureWriteHalfSync {
             SecureWriteHalfSync::Tls(tls_conn, socket) => {
                 match &mut *tls_conn.lock().unwrap() {
                     Either::Left(tls_conn) => {
-                        tls_conn.writer().write(buf)?;
+                        tls_conn.writer().write_all(buf)?;
 
                         //FIXME: Is this even correct? Will it write the correct amount of bytes?
                         // Since we are returning a different result that can write a different
@@ -486,7 +486,7 @@ impl Write for SecureWriteHalfSync {
                         }
                     }
                     Either::Right(tls_conn) => {
-                        tls_conn.writer().write(buf)?;
+                        tls_conn.writer().write_all(buf)?;
 
                         //FIXME: Is this even correct? Will it write the correct amount of bytes?
                         // Since we are returning a different result that can write a different
@@ -738,11 +738,11 @@ impl SyncSocket {
 
 impl Write for SyncSocket {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (&mut self.inner).write(buf)
+        self.inner.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (&mut self.inner).flush()
+        self.inner.flush()
     }
 }
 

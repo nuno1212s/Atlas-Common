@@ -36,6 +36,12 @@ pub struct Digest {
     inner: blake3_blake3::Digest,
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Context {
     /// Initializes a new `Context` instance.
     ///

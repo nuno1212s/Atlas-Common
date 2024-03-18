@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::sync::Arc;
+
 use thiserror::Error;
 
 use crate::error::*;

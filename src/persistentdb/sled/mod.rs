@@ -1,5 +1,5 @@
 use crate::error::*;
-use anyhow::{anyhow, Context};
+use anyhow::{Context};
 use std::path::Path;
 
 pub(crate) struct SledKVDB {
@@ -19,7 +19,7 @@ impl SledKVDB {
         }
 
         Ok(Self {
-            db_handle: db_handle,
+            db_handle,
         })
     }
 
@@ -39,7 +39,7 @@ impl SledKVDB {
 
         Ok(result.map(|v| v.to_vec()))
     }
-    pub fn get_all<T, Y>(&self, keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
+    pub fn get_all<T, Y>(&self, _keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
     where
         T: Iterator<Item = (&'static str, Y)>,
         Y: AsRef<[u8]>,
@@ -67,7 +67,7 @@ impl SledKVDB {
             .context(format!("Failed to set key in prefix {:?}", prefix))
             .map(|_| ())
     }
-    pub fn set_all<T, Y, Z>(&self, prefix: &'static str, values: T) -> Result<()>
+    pub fn set_all<T, Y, Z>(&self, _prefix: &'static str, _values: T) -> Result<()>
     where
         T: Iterator<Item = (Y, Z)>,
         Y: AsRef<[u8]>,
@@ -127,9 +127,9 @@ impl SledKVDB {
 
     pub fn iter_range<T, Y>(
         &self,
-        prefix: &'static str,
-        start: Option<T>,
-        end: Option<Y>,
+        _prefix: &'static str,
+        _start: Option<T>,
+        _end: Option<Y>,
     ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
     where
         T: AsRef<[u8]>,

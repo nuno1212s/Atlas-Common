@@ -1,7 +1,7 @@
 //! FIFO channels used to send messages between async tasks.
 
-use anyhow::Error;
-use std::fmt::{Debug, Display, Formatter};
+
+use std::fmt::{Debug, Formatter};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use crate::error::*;
 use crate::Err;
 use futures::future::FusedFuture;
 use futures::TryFutureExt;
-use log::{error, warn};
+use log::{error};
 use thiserror::Error;
 
 #[cfg(feature = "channel_futures_mpsc")]
@@ -100,7 +100,7 @@ impl<T> ChannelAsyncTx<T> {
 impl<T> ChannelAsyncRx<T> {
     //Asynchronously recv message from channel
     #[inline]
-    pub fn recv<'a>(&'a mut self) -> ChannelRxFut<'a, T> {
+    pub fn recv(&mut self) -> ChannelRxFut<'_, T> {
         let inner = self.inner.recv();
         ChannelRxFut { inner }
     }
@@ -315,7 +315,7 @@ pub fn new_bounded_sync<T>(
 
 #[inline]
 pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-    let name = name.map(|string| Arc::from(string));
+    let name = name.map(Arc::from);
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {

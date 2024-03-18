@@ -6,7 +6,7 @@ use super::PublicKeySet;
 use crate::error::*;
 use crate::Err;
 use getset::{CopyGetters, Getters, MutGetters, Setters};
-use serde::Serializer;
+
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -107,7 +107,7 @@ pub struct DistributedKeyGenerator {
 
 impl DistributedKeyGenerator {
     pub fn new(params: DKGParams, our_id: usize) -> Result<(Self, DealerPart)> {
-        let mut rng = rand::rngs::OsRng::default();
+        let mut rng = rand::rngs::OsRng;
 
         let my_gen = BivarPoly::random(params.faulty_nodes(), &mut rng);
 
@@ -194,8 +194,7 @@ impl DistributedKeyGenerator {
                 node_info
                     .values
                     .iter()
-                    .take(self.params.faulty_nodes() + 1)
-                    .map(|(i, v)| (i, v)),
+                    .take(self.params.faulty_nodes() + 1),
             );
 
             sk.add_assign(&row.evaluate(0));
@@ -283,7 +282,7 @@ impl DistributedKeyGenerator {
             part_being_acked: confirmed,
         }: Ack,
     ) -> Result<()> {
-        let mut part = self.received_parts.get_mut(&confirmed);
+        let part = self.received_parts.get_mut(&confirmed);
 
         if part.is_none() {
             let ack = Ack {
@@ -294,7 +293,7 @@ impl DistributedKeyGenerator {
 
             self.pending_acks
                 .entry(confirmed)
-                .or_insert_with(VecDeque::new)
+                .or_default()
                 .push_back((sender, ack));
 
             return Ok(());
@@ -437,14 +436,14 @@ pub mod dkg_test {
         PrivateKeyPart, PublicKeySet, SecretKeySet,
     };
     use crate::error::*;
-    use anyhow::anyhow;
+    
     use getset::{CopyGetters, Getters};
-    use rand::Rng;
-    use std::io::stderr;
+    
+    
     use std::iter;
     use std::sync::Arc;
     use std::thread::JoinHandle;
-    use std::time::Duration;
+    
 
     const DEALERS: usize = 4;
     const FAULTY_NODES: usize = 1;
@@ -513,20 +512,17 @@ pub mod dkg_test {
         let combined_signatures = sigs
             .iter()
             .enumerate()
-            .map(|(i, sig)| (i, sig.clone()))
             .collect::<Vec<_>>();
 
         for node in 1..=NODES {
-            let (pk, sk) = &node_keys[node - 1];
+            let (pk, _sk) = &node_keys[node - 1];
 
             let signature = pk
-                .combine_signatures(
+                .combine_signatures::<usize, _>(
                     combined_signatures
                         .iter()
-                        .cloned()
                         .take(FAULTY_NODES + 1)
-                        .collect::<Vec<_>>()
-                        .as_slice(),
+                        .cloned(),
                 )
                 .unwrap();
 
@@ -561,7 +557,7 @@ pub mod dkg_test {
 
         let mut participating_nodes = (1..=NODES)
             .map(|node_id| {
-                let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None);
+                let (_tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None::<&str>);
 
                 let (dkg, part) = DistributedKeyGenerator::new(
                     DKGParams {
@@ -589,9 +585,9 @@ pub mod dkg_test {
         let mut acks = Vec::new();
 
         parts[..=FAULTY_NODES].iter().for_each(|part| {
-            let (dealer_id, mut part) = part.clone();
+            let (dealer_id, part) = part.clone();
 
-            participating_nodes.iter_mut().for_each(|(node)| {
+            participating_nodes.iter_mut().for_each(|node| {
                 let ack = node
                     .dkg
                     .handle_part(dealer_id, part.clone())
@@ -604,7 +600,7 @@ pub mod dkg_test {
         });
 
         acks.iter().for_each(|(node_id, ack)| {
-            participating_nodes.iter_mut().for_each(|(node)| {
+            participating_nodes.iter_mut().for_each(|node| {
                 assert!(!node.dkg.is_ready());
 
                 node.dkg
@@ -615,7 +611,7 @@ pub mod dkg_test {
 
         participating_nodes
             .into_iter()
-            .map(|(node)| {
+            .map(|node| {
                 assert!(node.dkg.is_ready());
 
                 let (pk, sk) = node.dkg.finalize().unwrap();
@@ -633,7 +629,7 @@ pub mod dkg_test {
     )> {
         let participating_nodes = (1..=NODES)
             .map(|node_id| {
-                let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None);
+                let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None::<&str>);
 
                 let (dkg, part) = DistributedKeyGenerator::new(
                     DKGParams {
@@ -661,10 +657,10 @@ pub mod dkg_test {
                 .collect(),
         });
 
-        let mut threads: Vec<_> = participating_nodes
+        let threads: Vec<_> = participating_nodes
             .into_iter()
             .zip(iter::repeat_with(|| channel_db.clone()))
-            .map(|((node, part, tx), db)| std::thread::spawn(|| run_node(node, part, db)))
+            .map(|((node, part, _tx), db)| std::thread::spawn(|| run_node(node, part, db)))
             .collect();
 
         threads
@@ -690,14 +686,12 @@ pub mod dkg_test {
 
         let result: Result<()> = txs
             .channels
-            .iter()
-            .map(|tx| {
+            .iter().try_for_each(|tx| {
                 tx.send(NodeMessage {
                     from: node.id,
                     msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
                 })
-            })
-            .collect();
+            });
 
         result.expect("Failed to send dealer part");
 
@@ -713,14 +707,12 @@ pub mod dkg_test {
                             Ok(ack) => {
                                 let res: Result<()> = txs
                                     .channels
-                                    .iter()
-                                    .map(|tx| {
+                                    .iter().try_for_each(|tx| {
                                         tx.send(NodeMessage {
                                             from: node.id,
                                             msg_type: NodeMessageType::Ack(ack.clone()),
                                         })
-                                    })
-                                    .collect();
+                                    });
 
                                 res.expect("Failed to send ack");
                                 eprintln!(

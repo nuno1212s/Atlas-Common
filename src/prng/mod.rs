@@ -18,6 +18,12 @@ pub struct ThreadSafePrng {
     rng: ThreadLocal<RefCell<State>>,
 }
 
+impl Default for ThreadSafePrng {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ThreadSafePrng {
     pub fn new() -> Self {
         Self {
@@ -33,12 +39,18 @@ impl ThreadSafePrng {
     }
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl State {
     /// Creates a new PRNG from a cryptographically secure random seed.
     pub fn new() -> Self {
         let mut seed = [0; 32];
 
-        OsRng::default().fill_bytes(&mut seed);
+        OsRng.fill_bytes(&mut seed);
 
         let s = unsafe { std::mem::transmute(seed) };
         let mut s = State { s };

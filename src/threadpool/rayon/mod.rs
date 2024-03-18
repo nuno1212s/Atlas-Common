@@ -1,5 +1,5 @@
 use rayon::ThreadPoolBuilder;
-use std::sync::atomic::{AtomicUsize, Ordering};
+
 
 pub struct ThreadPool {
     inner: rayon::ThreadPool,

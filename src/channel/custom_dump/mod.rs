@@ -1,6 +1,6 @@
 use dsrust::channels::async_ch::{ReceiverFut, ReceiverMultFut};
 use dsrust::channels::queue_channel::{Receiver, ReceiverMult, Sender};
-use dsrust::queues::lf_array_queue::LFBQueue;
+
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -81,7 +81,7 @@ impl<T> ChannelRx<T> {
 
     ///Async receiver with no backoff (Turns straight to event notifications)
     #[inline]
-    pub fn recv<'a>(&'a mut self) -> ChannelRxFut<'a, T> {
+    pub fn recv(&mut self) -> ChannelRxFut<'_, T> {
         let inner = self.inner.recv_fut();
 
         ChannelRxFut { inner }
@@ -95,7 +95,7 @@ impl<T> ChannelRxMult<T> {
 
     ///Async receiver with no backoff (Turns straight to event notifications)
     #[inline]
-    pub fn recv<'a>(&'a mut self) -> ChannelRxMultFut<'a, T> {
+    pub fn recv(&mut self) -> ChannelRxMultFut<'_, T> {
         let inner = self.inner.recv_fut();
 
         ChannelRxMultFut { inner }

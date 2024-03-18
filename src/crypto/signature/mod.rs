@@ -110,7 +110,7 @@ impl KeyPair {
     ///
     /// The returned key can be cloned into an owned type with `into()`,
     /// yielding a `PublicKey`.
-    pub fn public_key<'a>(&'a self) -> PublicKeyRef<'a> {
+    pub fn public_key(&self) -> PublicKeyRef<'_> {
         let inner = self.inner.public_key();
         PublicKeyRef {
             inner,
@@ -136,7 +136,7 @@ impl KeyPair {
 
 impl<'a> From<PublicKeyRef<'a>> for PublicKey {
     fn from(pk: PublicKeyRef<'a>) -> PublicKey {
-        let inner = pk.inner.clone();
+        let inner = *pk.inner;
         PublicKey {
             inner,
             pk_bytes: pk.byte_repr.clone(),

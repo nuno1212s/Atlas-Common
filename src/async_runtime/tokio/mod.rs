@@ -23,7 +23,7 @@ pub fn init(num_threads: usize) -> Result<Runtime> {
         .build()
         .context("Failed to build tokio runtime")?;
 
-    let handle = result.handle();
+    let _handle = result.handle();
 
     Ok(result)
 }

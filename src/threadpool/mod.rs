@@ -42,6 +42,12 @@ pub struct Builder {
     inner: rayon::Builder,
 }
 
+impl Default for Builder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Builder {
     /// Returns a new thread pool builder.
     pub fn new() -> Builder {
@@ -67,9 +73,9 @@ impl Builder {
     pub fn build(self) -> ThreadPool {
         let inner = self.inner.build();
 
-        let thread_pool = ThreadPool { inner };
+        
 
-        thread_pool
+        ThreadPool { inner }
     }
 
     /// Configures the number of threads used by the thread pool.

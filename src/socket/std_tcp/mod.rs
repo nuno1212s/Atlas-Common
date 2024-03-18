@@ -1,6 +1,6 @@
 use crate::error::*;
 use crate::socket::{MioListener, MioSocket};
-use anyhow::Context;
+
 use std::io;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -21,7 +21,7 @@ pub fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
 }
 
 pub fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
-    let socket = TcpStream::connect(addr.into()).map(|s| Socket::new(s))?;
+    let socket = TcpStream::connect(addr.into()).map(Socket::new)?;
 
     Ok(socket)
 }
@@ -59,11 +59,11 @@ impl DerefMut for Socket {
 
 impl Write for Socket {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (&mut self.inner).write(buf)
+        self.inner.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (&mut self.inner).flush()
+        self.inner.flush()
     }
 }
 
