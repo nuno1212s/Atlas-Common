@@ -1,5 +1,6 @@
 //#[cfg(feature = "serialize_serde")]
 //mod other;
+#![allow(dead_code)]
 
 use super::PrivateKeyPart;
 use super::PublicKeySet;
@@ -10,7 +11,6 @@ use getset::{CopyGetters, Getters, MutGetters, Setters};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::io::Write;
 use thiserror::Error;
 use threshold_crypto::ff::Field;
 use threshold_crypto::group::CurveAffine;

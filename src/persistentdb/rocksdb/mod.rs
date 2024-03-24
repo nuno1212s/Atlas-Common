@@ -9,7 +9,7 @@ use rocksdb::{
 };
 
 use crate::error::*;
-use crate::persistentdb::PersStorage;
+use crate::persistentdb::{KeyValueEntry, PersStorage};
 
 pub(crate) struct RocksKVDB {
     db: DBWithThreadMode<SingleThreaded>,
@@ -190,7 +190,7 @@ impl RocksKVDB {
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
+    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>>
     where
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,

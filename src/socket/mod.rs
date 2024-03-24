@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 use std::io;
-use std::io::{BufRead, ErrorKind, Read, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context as Cntx, Poll};
 
 use either::Either;
-use futures::{AsyncRead, AsyncReadExt, AsyncWrite};
+use futures::{AsyncRead, AsyncWrite};
 
 use futures::io::{BufReader, BufWriter};
 use log::error;
@@ -187,6 +187,11 @@ impl DerefMut for MioSocket {
 }
 
 /// Initialize the sockets module.
+/// 
+/// # Safety
+/// 
+/// Safe when ever using all TCP streams except RIO.
+/// When using rio, this can only be called once
 pub unsafe fn init() -> Result<()> {
     #[cfg(feature = "socket_rio_tcp")]
     {
@@ -197,6 +202,12 @@ pub unsafe fn init() -> Result<()> {
 }
 
 /// Drops the global data associated with sockets.
+/// 
+/// # Safety
+///
+/// Safe when ever using all TCP streams except RIO.
+/// When using rio, this can only be called once and after the [init]
+/// function
 pub unsafe fn drop() -> Result<()> {
     #[cfg(feature = "socket_rio_tcp")]
     {
@@ -347,7 +358,7 @@ pub enum SecureSocket {
 
 pub enum SecureSocketSync {
     Plain(SyncSocket),
-    Tls(Either<ClientConnection, ServerConnection>, SyncSocket),
+    Tls(Box<Either<ClientConnection, ServerConnection>>, SyncSocket),
 }
 
 impl SecureSocketSync {
@@ -356,11 +367,11 @@ impl SecureSocketSync {
     }
 
     pub fn new_tls_server(tls_conn: ServerConnection, socket: SyncSocket) -> Self {
-        Self::Tls(Either::Right(tls_conn), socket)
+        Self::Tls(Box::new(Either::Right(tls_conn)), socket)
     }
 
     pub fn new_tls_client(tls_conn: ClientConnection, socket: SyncSocket) -> Self {
-        Self::Tls(Either::Left(tls_conn), socket)
+        Self::Tls(Box::new(Either::Left(tls_conn)), socket)
     }
 
     pub fn split(self) -> (SecureWriteHalfSync, SecureReadHalfSync) {
@@ -376,7 +387,7 @@ impl SecureSocketSync {
             SecureSocketSync::Tls(connection, socket) => {
                 let (write, read) = socket.split();
 
-                let shared_conn = Arc::new(Mutex::new(connection));
+                let shared_conn = Arc::new(Mutex::new(*connection));
 
                 (
                     SecureWriteHalfSync::Tls(shared_conn.clone(), write),

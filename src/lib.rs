@@ -71,6 +71,13 @@ pub struct InitGuard;
 ///
 /// Should always be called before other methods, otherwise runtime
 /// panics may ensue.
+/// 
+/// # Safety
+/// 
+/// Safe when this is called once, and before all others.
+/// Returns init guard that will automatically call drop when
+/// dropped.
+/// Keep [InitGuard] within scope for the execution of the program.
 pub unsafe fn init(c: InitConfig) -> Result<Option<InitGuard>> {
     if INITIALIZED.test() {
         return Ok(None);
@@ -95,6 +102,9 @@ impl Drop for InitGuard {
     }
 }
 
+/// # Safety
+/// Safe when called after [init].
+/// Ideally, use [InitGuard] to control access to this function
 unsafe fn drop() -> Result<()> {
     INITIALIZED.unset();
     threadpool::drop()?;

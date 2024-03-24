@@ -62,14 +62,6 @@ impl<T> MaybeVec<T> {
         }
     }
 
-    pub fn into_iter(self) -> ItMaybeVec<T> {
-        match self {
-            MaybeVec::One(obj) => ItMaybeVec::One(iter::once(obj)),
-            MaybeVec::Mult(vec) => ItMaybeVec::Mult(vec.into_iter()),
-            MaybeVec::None => ItMaybeVec::None,
-        }
-    }
-
     pub fn into_vec(self) -> Vec<T> {
         match self {
             MaybeVec::None => Vec::new(),
@@ -121,7 +113,11 @@ impl<T> IntoIterator for MaybeVec<T> {
     type IntoIter = ItMaybeVec<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.into_iter()
+        match self {
+            MaybeVec::One(obj) => ItMaybeVec::One(iter::once(obj)),
+            MaybeVec::Mult(vec) => ItMaybeVec::Mult(vec.into_iter()),
+            MaybeVec::None => ItMaybeVec::None,
+        }
     }
 }
 
@@ -211,7 +207,7 @@ impl<T> MaybeVecBuilder<T> {
 }
 
 impl<T> FromIterator<T> for MaybeVec<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
         let mut maybe_vec = MaybeVec::builder();
 
         iter.into_iter().for_each(|item| maybe_vec.push(item));

@@ -10,7 +10,6 @@ use std::time::Duration;
 use crate::error::*;
 use crate::Err;
 use futures::future::FusedFuture;
-use futures::TryFutureExt;
 use log::error;
 use thiserror::Error;
 
@@ -168,6 +167,11 @@ pub struct ChannelSyncTx<T> {
 
 impl<T> ChannelSyncRx<T> {
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
@@ -192,6 +196,11 @@ impl<T> ChannelSyncTx<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     #[inline]
@@ -369,6 +378,9 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    #[inline]
     pub fn recv(&self) -> Result<T> {
         match self.inner.recv_sync() {
             Ok(res) => Ok(res),
@@ -408,6 +420,11 @@ impl<T> ChannelMixedTx<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     #[inline]
@@ -490,6 +507,11 @@ impl<T> ChannelMultTx<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn is_dc(&self) -> bool {

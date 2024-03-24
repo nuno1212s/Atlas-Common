@@ -1,6 +1,9 @@
+#![allow(dead_code)]
+
 use crate::error::*;
 use anyhow::Context;
 use std::path::Path;
+use crate::persistentdb::KeyValueEntry;
 
 pub(crate) struct SledKVDB {
     db_handle: ::sled::Db,
@@ -128,7 +131,7 @@ impl SledKVDB {
         _prefix: &'static str,
         _start: Option<T>,
         _end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
+    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>>
     where
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,

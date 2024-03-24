@@ -7,7 +7,6 @@ mod tokio;
 mod async_std;
 
 use anyhow::Context;
-use futures::task::SpawnExt;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context as Cntx, Poll};
@@ -47,6 +46,9 @@ pub struct JoinHandle<T> {
 /// This function initializes the async runtime.
 ///
 /// It should be called once before the core protocol starts executing.
+/// 
+/// # Safety
+/// This is safe when it's the first called function and when it's only called once
 pub unsafe fn init(num_threads: usize) -> Result<()> {
     #[cfg(feature = "async_runtime_tokio")]
     {
@@ -63,6 +65,9 @@ pub unsafe fn init(num_threads: usize) -> Result<()> {
 ///
 /// It shouldn't be needed to be called manually called, as the
 /// `InitGuard` should take care of calling this.
+/// 
+/// # Safety
+/// Safe when called after [init()]
 pub unsafe fn drop() -> Result<()> {
     if let Some(rt) = RUNTIME.drop() {
         rt.shutdown_timeout(Duration::from_secs(1));

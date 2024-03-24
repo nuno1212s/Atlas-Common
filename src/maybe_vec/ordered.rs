@@ -26,8 +26,8 @@ impl<T> MaybeOrderedVec<T> {
     }
 
     pub fn from_many(objects: Vec<T>) -> Self
-    where
-        T: Ord,
+        where
+            T: Ord,
     {
         let mut result = BTreeSet::new();
 
@@ -65,14 +65,6 @@ impl<T> MaybeOrderedVec<T> {
             MaybeOrderedVec::None => ItRefMaybeVec::None,
         }
     }
-
-    pub fn into_iter(self) -> ItMaybeVec<T> {
-        match self {
-            MaybeOrderedVec::One(one) => ItMaybeVec::One(iter::once(one)),
-            MaybeOrderedVec::Mult(vec) => ItMaybeVec::Mult(vec.into_iter()),
-            MaybeOrderedVec::None => ItMaybeVec::None,
-        }
-    }
 }
 
 pub enum ItMaybeVec<T> {
@@ -98,7 +90,11 @@ impl<T> IntoIterator for MaybeOrderedVec<T> {
     type IntoIter = ItMaybeVec<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.into_iter()
+        match self {
+            MaybeOrderedVec::One(one) => ItMaybeVec::One(iter::once(one)),
+            MaybeOrderedVec::Mult(vec) => ItMaybeVec::Mult(vec.into_iter()),
+            MaybeOrderedVec::None => ItMaybeVec::None,
+        }
     }
 }
 
@@ -137,8 +133,8 @@ impl<T> MaybeOrderedVecBuilder<T> {
     }
 
     pub fn push(&mut self, value: T)
-    where
-        T: Ord,
+        where
+            T: Ord,
     {
         let current = std::mem::replace(&mut self.current_value, MaybeOrderedVec::None);
 

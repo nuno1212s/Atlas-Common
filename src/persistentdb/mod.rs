@@ -25,6 +25,8 @@ pub struct KVDB {
     inner: disabled::DisabledKV,
 }
 
+type KeyValueEntry = (Box<[u8]>, Box<[u8]>);
+
 impl KVDB {
     pub fn new<T>(db_path: T, prefixes: Vec<&'static str>) -> Result<Self>
     where
@@ -135,7 +137,7 @@ impl KVDB {
     pub fn iter(
         &self,
         prefix: &'static str,
-    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>> {
+    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>> {
         self.iter_range::<Vec<u8>, Vec<u8>>(prefix, None, None)
     }
 
@@ -144,7 +146,7 @@ impl KVDB {
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>)>> + '_>>
+    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>>
     where
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,

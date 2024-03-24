@@ -1,4 +1,6 @@
 //! Ordering messages of the sub-protocols in `febft`.
+#![allow(dead_code)]
+#![allow(clippy::non_canonical_partial_ord_impl)]
 
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::collections::VecDeque;
@@ -80,7 +82,10 @@ impl PartialOrd for SeqNo {
 }
 
 impl ThreadSafeSeqNo {
-    pub const ZERO: Self = ThreadSafeSeqNo(AtomicI32::new(0));
+    
+    pub fn zero() -> ThreadSafeSeqNo {
+        ThreadSafeSeqNo(AtomicI32::new(0))
+    }
 
     /// Increments the SeqNo
     #[inline]
@@ -217,13 +222,10 @@ pub fn tbo_queue_message<M: Orderable>(curr_seq: SeqNo, tbo: &mut VecDeque<VecDe
 /// Takes an internal queue of a `TboQueue` (e.g. the one used in the consensus
 /// module), and drops messages pertaining to the last sequence number.
 pub fn tbo_advance_message_queue<M>(tbo: &mut VecDeque<VecDeque<M>>) {
-    match tbo.pop_front() {
-        Some(mut vec) => {
-            // recycle memory
-            vec.clear();
-            tbo.push_back(vec);
-        }
-        None => (),
+    if let Some(mut vec) = tbo.pop_front() {
+        // recycle memory
+        vec.clear();
+        tbo.push_back(vec);
     }
 }
 
