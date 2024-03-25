@@ -1,4 +1,4 @@
-//! This crate, `febft-common` takes advantage of the feature flags
+//! This crate, `atlas-common` takes advantage of the feature flags
 //! in `Cargo.toml` to provide a super flexible, modular API.
 //!
 //! # Feature flags
