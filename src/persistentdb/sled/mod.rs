@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 use crate::error::*;
+use crate::persistentdb::KeyValueEntry;
 use anyhow::Context;
 use std::path::Path;
-use crate::persistentdb::KeyValueEntry;
 
 pub(crate) struct SledKVDB {
     db_handle: ::sled::Db,

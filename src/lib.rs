@@ -71,9 +71,9 @@ pub struct InitGuard;
 ///
 /// Should always be called before other methods, otherwise runtime
 /// panics may ensue.
-/// 
+///
 /// # Safety
-/// 
+///
 /// Safe when this is called once, and before all others.
 /// Returns init guard that will automatically call drop when
 /// dropped.

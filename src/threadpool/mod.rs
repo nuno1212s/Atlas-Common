@@ -123,9 +123,9 @@ macro_rules! pool {
 /// This function initializes the thread pools.
 ///
 /// It should be called once before the core protocol starts executing.
-/// 
+///
 /// # Safety
-/// 
+///
 /// Safe when this is called at the beginning of the program (before all others)
 /// and when only called ONCE
 pub unsafe fn init(num_threads: usize) -> Result<()> {
@@ -139,9 +139,9 @@ pub unsafe fn init(num_threads: usize) -> Result<()> {
 ///
 /// It shouldn't be needed to be called manually called, as the
 /// `InitGuard` should take care of calling this.
-/// 
+///
 /// # Safety
-/// 
+///
 /// Safe when called after [init] and when the last called function
 pub unsafe fn drop() -> Result<()> {
     join();

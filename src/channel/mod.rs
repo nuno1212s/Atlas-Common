@@ -219,7 +219,7 @@ impl<T> ChannelSyncTx<T> {
             Err(err) => match err {
                 TrySendReturnError::Full(value) => {
                     error!("Failed to insert into channel. Channel is full and could not directly insert, blocking. {:?}", self.channel_identifier);
-                    
+
                     value
                 }
                 TrySendReturnError::Disconnected(value) => {
@@ -230,7 +230,7 @@ impl<T> ChannelSyncTx<T> {
                 TrySendReturnError::Timeout(value) => value,
             },
         };
-        
+
         self.inner.send(value)
     }
 
@@ -378,7 +378,9 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     #[inline]
     pub fn recv(&self) -> Result<T> {

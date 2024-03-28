@@ -26,8 +26,8 @@ impl<T> MaybeOrderedVec<T> {
     }
 
     pub fn from_many(objects: Vec<T>) -> Self
-        where
-            T: Ord,
+    where
+        T: Ord,
     {
         let mut result = BTreeSet::new();
 
@@ -133,8 +133,8 @@ impl<T> MaybeOrderedVecBuilder<T> {
     }
 
     pub fn push(&mut self, value: T)
-        where
-            T: Ord,
+    where
+        T: Ord,
     {
         let current = std::mem::replace(&mut self.current_value, MaybeOrderedVec::None);
 

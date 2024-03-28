@@ -207,7 +207,7 @@ impl<T> MaybeVecBuilder<T> {
 }
 
 impl<T> FromIterator<T> for MaybeVec<T> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut maybe_vec = MaybeVec::builder();
 
         iter.into_iter().for_each(|item| maybe_vec.push(item));

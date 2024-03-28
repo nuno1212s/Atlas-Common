@@ -82,7 +82,6 @@ impl PartialOrd for SeqNo {
 }
 
 impl ThreadSafeSeqNo {
-    
     pub fn zero() -> ThreadSafeSeqNo {
         ThreadSafeSeqNo(AtomicI32::new(0))
     }

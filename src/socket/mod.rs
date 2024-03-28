@@ -187,9 +187,9 @@ impl DerefMut for MioSocket {
 }
 
 /// Initialize the sockets module.
-/// 
+///
 /// # Safety
-/// 
+///
 /// Safe when ever using all TCP streams except RIO.
 /// When using rio, this can only be called once
 pub unsafe fn init() -> Result<()> {
@@ -202,7 +202,7 @@ pub unsafe fn init() -> Result<()> {
 }
 
 /// Drops the global data associated with sockets.
-/// 
+///
 /// # Safety
 ///
 /// Safe when ever using all TCP streams except RIO.
