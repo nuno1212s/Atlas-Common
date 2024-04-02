@@ -1,7 +1,7 @@
 //! Abstractions over different crypto hash digest algorithms.
 
-use log::error;
 use std::fmt::{Debug, Formatter};
+use tracing::error;
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};

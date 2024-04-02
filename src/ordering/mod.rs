@@ -11,6 +11,7 @@ use either::{Either, Left, Right};
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
+use tracing::field::{Field, Visit};
 
 pub const PERIOD: u32 = 100000000;
 
@@ -150,6 +151,11 @@ impl SeqNo {
         } else {
             Right(index as usize)
         }
+    }
+
+    #[inline]
+    pub fn into_u32(self) -> u32 {
+        self.into()
     }
 }
 

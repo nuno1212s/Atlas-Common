@@ -27,7 +27,7 @@
 
 use crate::error::*;
 use crate::globals::Flag;
-use log::debug;
+use tracing::{debug, instrument};
 
 pub mod async_runtime;
 pub mod channel;
@@ -37,7 +37,6 @@ pub mod crypto;
 pub mod error;
 pub mod globals;
 pub mod maybe_vec;
-pub mod mem_pool;
 pub mod node_id;
 pub mod ordering;
 pub mod peer_addr;
@@ -51,6 +50,7 @@ pub mod threadpool;
 static INITIALIZED: Flag = Flag::new();
 
 /// Configure the init process of the library.
+#[derive(Debug)]
 pub struct InitConfig {
     /// Number of threads used by the async runtime.
     pub async_threads: usize,
@@ -78,6 +78,7 @@ pub struct InitGuard;
 /// Returns init guard that will automatically call drop when
 /// dropped.
 /// Keep [InitGuard] within scope for the execution of the program.
+#[instrument()]
 pub unsafe fn init(c: InitConfig) -> Result<Option<InitGuard>> {
     if INITIALIZED.test() {
         return Ok(None);
@@ -105,6 +106,7 @@ impl Drop for InitGuard {
 /// # Safety
 /// Safe when called after [init].
 /// Ideally, use [InitGuard] to control access to this function
+#[instrument]
 unsafe fn drop() -> Result<()> {
     INITIALIZED.unset();
     threadpool::drop()?;

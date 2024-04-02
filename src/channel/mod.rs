@@ -10,8 +10,8 @@ use std::time::Duration;
 use crate::error::*;
 use crate::Err;
 use futures::future::FusedFuture;
-use log::error;
 use thiserror::Error;
+use tracing::error;
 
 #[cfg(feature = "channel_futures_mpsc")]
 mod futures_mpsc;

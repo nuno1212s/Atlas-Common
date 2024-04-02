@@ -13,9 +13,9 @@ use either::Either;
 use futures::{AsyncRead, AsyncWrite};
 
 use futures::io::{BufReader, BufWriter};
-use log::error;
 use mio::event::Source;
 use mio::{Interest, Registry, Token};
+use tracing::error;
 
 use rustls::{ClientConnection, ServerConnection};
 use tokio_rustls::TlsStream;
