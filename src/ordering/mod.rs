@@ -11,7 +11,6 @@ use either::{Either, Left, Right};
 
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
-use tracing::field::{Field, Visit};
 
 pub const PERIOD: u32 = 100000000;
 
