@@ -218,7 +218,11 @@ impl<T> ChannelSyncTx<T> {
             }
             Err(err) => match err {
                 TrySendReturnError::Full(value) => {
-                    error!("Failed to insert into channel. Channel is full and could not directly insert, blocking. {:?}", self.channel_identifier);
+                    error!(
+                        channel = self.channel_identifier.as_deref().unwrap_or("Unknown"),
+                        capacity = self.inner.capacity(),
+                        current_occupation = self.inner.len(),
+                        "Failed to insert into channel. Channel is full and could not directly insert, blocking",);
 
                     value
                 }
