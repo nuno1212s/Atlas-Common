@@ -366,11 +366,13 @@ pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSy
 Async and sync mixed channels (Allows us to connect async and sync environments together)
  */
 pub struct ChannelMixedRx<T> {
+    channel_identifier: Option<Arc<str>>,
     #[cfg(feature = "channel_mixed_flume")]
     inner: flume_mpmc::ChannelMixedRx<T>,
 }
 
 pub struct ChannelMixedTx<T> {
+    channel_identifier: Option<Arc<str>>,
     #[cfg(feature = "channel_mixed_flume")]
     inner: flume_mpmc::ChannelMixedTx<T>,
 }
@@ -471,6 +473,7 @@ impl<T> ChannelMixedTx<T> {
 impl<T> Clone for ChannelMixedTx<T> {
     fn clone(&self) -> Self {
         ChannelMixedTx {
+            channel_identifier: self.channel_identifier.clone(),
             inner: self.inner.clone(),
         }
     }
@@ -479,12 +482,17 @@ impl<T> Clone for ChannelMixedTx<T> {
 impl<T> Clone for ChannelMixedRx<T> {
     fn clone(&self) -> Self {
         ChannelMixedRx {
+            channel_identifier: self.channel_identifier.clone(),
             inner: self.inner.clone(),
         }
     }
 }
 
-pub fn new_bounded_mixed<T>(bound: usize) -> (ChannelMixedTx<T>, ChannelMixedRx<T>) {
+pub fn new_bounded_mixed<T>(bound: usize,
+                            name: Option<impl Into<String>>,) -> (ChannelMixedTx<T>, ChannelMixedRx<T>) {
+
+    let name = name.map(|string| Arc::from(string.into()));
+    
     let (tx, rx) = {
         #[cfg(feature = "channel_mixed_flume")]
         {
@@ -492,7 +500,7 @@ pub fn new_bounded_mixed<T>(bound: usize) -> (ChannelMixedTx<T>, ChannelMixedRx<
         }
     };
 
-    (ChannelMixedTx { inner: tx }, ChannelMixedRx { inner: rx })
+    (ChannelMixedTx { channel_identifier: name.clone(), inner: tx }, ChannelMixedRx { channel_identifier: name, inner: rx })
 }
 
 /**
