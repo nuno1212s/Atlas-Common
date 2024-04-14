@@ -488,11 +488,12 @@ impl<T> Clone for ChannelMixedRx<T> {
     }
 }
 
-pub fn new_bounded_mixed<T>(bound: usize,
-                            name: Option<impl Into<String>>,) -> (ChannelMixedTx<T>, ChannelMixedRx<T>) {
-
+pub fn new_bounded_mixed<T>(
+    bound: usize,
+    name: Option<impl Into<String>>,
+) -> (ChannelMixedTx<T>, ChannelMixedRx<T>) {
     let name = name.map(|string| Arc::from(string.into()));
-    
+
     let (tx, rx) = {
         #[cfg(feature = "channel_mixed_flume")]
         {
@@ -500,7 +501,16 @@ pub fn new_bounded_mixed<T>(bound: usize,
         }
     };
 
-    (ChannelMixedTx { channel_identifier: name.clone(), inner: tx }, ChannelMixedRx { channel_identifier: name, inner: rx })
+    (
+        ChannelMixedTx {
+            channel_identifier: name.clone(),
+            inner: tx,
+        },
+        ChannelMixedRx {
+            channel_identifier: name,
+            inner: rx,
+        },
+    )
 }
 
 /**
