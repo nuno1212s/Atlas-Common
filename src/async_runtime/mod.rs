@@ -81,11 +81,21 @@ pub unsafe fn drop() -> Result<()> {
 /// A handle to the future `JoinHandle` is returned, which can be
 /// awaited on, to resolve the value returned by `F`.
 pub fn spawn<F>(future: F) -> JoinHandle<F::Output>
-where
-    F: Future + Send + 'static,
-    F::Output: Send + 'static,
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
 {
     let inner = runtime!().spawn(future);
+    JoinHandle { inner }
+}
+
+pub fn spawn_blocking<F>(future: F) -> JoinHandle<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static, {
+
+    let inner = runtime!().spawn_blocking(future);
+    
     JoinHandle { inner }
 }
 

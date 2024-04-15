@@ -17,13 +17,11 @@ pub fn init(num_threads: usize) -> Result<Runtime> {
 
             let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
 
-            format!("Atlas-IO-Worker-{}", id)
+            format!("Atlas-Async-Worker-{}", id)
         })
         .enable_all()
         .build()
         .context("Failed to build tokio runtime")?;
-
-    let _handle = result.handle();
 
     Ok(result)
 }
