@@ -89,13 +89,13 @@ pub fn spawn<F>(future: F) -> JoinHandle<F::Output>
     JoinHandle { inner }
 }
 
-pub fn spawn_blocking<F>(future: F) -> JoinHandle<F::Output>
+pub fn spawn_blocking<F, R>(future: F) -> JoinHandle<F::Output>
     where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static, {
-
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+{
     let inner = runtime!().spawn_blocking(future);
-    
+
     JoinHandle { inner }
 }
 
