@@ -49,7 +49,7 @@ pub struct PartialSignature {
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct Signature {
+pub struct CombinedSignature {
     sig: thold_crypto::Signature,
 }
 
@@ -68,13 +68,13 @@ impl PublicKeySet {
         })
     }
 
-    pub fn verify(&self, msg: &[u8], sig: &Signature) -> Result<()> {
+    pub fn verify(&self, msg: &[u8], sig: &CombinedSignature) -> Result<()> {
         self.key.verify_combined_signature(msg, &sig.sig)?;
 
         Ok(())
     }
 
-    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature>
+    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<CombinedSignature>
     where
         I: IntoIterator<Item = (T, &'a PartialSignature)>,
         T: IntoFr,
@@ -84,7 +84,7 @@ impl PublicKeySet {
             .map(|(id, sig)| (id, &sig.sig))
             .collect::<Vec<_>>();
 
-        Ok(Signature {
+        Ok(CombinedSignature {
             sig: self.key.combine_signatures(map)?,
         })
     }
