@@ -1,7 +1,7 @@
 use crate::channel::{RecvError, SendReturnError, TryRecvError, TrySendReturnError};
 use crate::error::*;
 use crate::Err;
-use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
+use crossbeam_channel::{Receiver, RecvTimeoutError, SendTimeoutError, Sender};
 use std::ops::Deref;
 use std::time::Duration;
 
@@ -136,4 +136,40 @@ pub(super) fn new_unbounded<T>() -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
     let (tx, rx) = crossbeam_channel::unbounded();
 
     (ChannelSyncTx { inner: tx }, ChannelSyncRx { inner: rx })
+}
+
+impl<T> From<Sender<T>> for ChannelSyncTx<T> {
+    fn from(value: Sender<T>) -> Self {
+        Self { inner: value }
+    }
+}
+
+impl<T> From<Receiver<T>> for ChannelSyncRx<T> {
+    fn from(value: Receiver<T>) -> Self {
+        Self { inner: value }
+    }
+}
+
+impl<T> From<ChannelSyncTx<T>> for Sender<T> {
+    fn from(value: ChannelSyncTx<T>) -> Self {
+        value.inner
+    }
+}
+
+impl<T> From<ChannelSyncRx<T>> for Receiver<T> {
+    fn from(value: ChannelSyncRx<T>) -> Self {
+        value.inner
+    }
+}
+
+impl<T> AsRef<Sender<T>> for ChannelSyncTx<T> {
+    fn as_ref(&self) -> &Sender<T> {
+        &self.inner
+    }
+}
+
+impl<T> AsRef<Receiver<T>> for ChannelSyncRx<T> {
+    fn as_ref(&self) -> &Receiver<T> {
+        &self.inner
+    }
 }

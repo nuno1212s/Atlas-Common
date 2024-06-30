@@ -149,20 +149,26 @@ pub fn new_bounded_async<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelAsyncRx<
 /**
 Sync channels
  */
+#[cfg(feature = "channel_sync_crossbeam")]
+type InnerSyncChannelRx<T> = crossbeam::ChannelSyncRx<T>;
+
+#[cfg(feature = "channel_sync_crossbeam")]
+type InnerSyncChannelTx<T> = crossbeam::ChannelSyncTx<T>;
+
+#[cfg(feature = "channel_sync_flume")]
+type InnerSyncChannelRx<T> = flume_mpmc::ChannelMixedRx<T>;
+
+#[cfg(feature = "channel_sync_flume")]
+type InnerSyncChannelTx<T> = flume_mpmc::ChannelMixedTx<T>;
+
 pub struct ChannelSyncRx<T> {
     name: Option<Arc<str>>,
-    #[cfg(feature = "channel_sync_crossbeam")]
-    inner: crossbeam::ChannelSyncRx<T>,
-    #[cfg(feature = "channel_sync_flume")]
-    inner: flume_mpmc::ChannelMixedRx<T>,
+    inner: InnerSyncChannelRx<T>,
 }
 
 pub struct ChannelSyncTx<T> {
     channel_identifier: Option<Arc<str>>,
-    #[cfg(feature = "channel_sync_crossbeam")]
-    inner: crossbeam::ChannelSyncTx<T>,
-    #[cfg(feature = "channel_sync_flume")]
-    inner: flume_mpmc::ChannelMixedTx<T>,
+    inner: InnerSyncChannelTx<T>,
 }
 
 impl<T> ChannelSyncRx<T> {
@@ -361,6 +367,46 @@ pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSy
         )
     }
 }
+
+impl<T> From<ChannelSyncTx<T>> for InnerSyncChannelTx<T> {
+    fn from(value: ChannelSyncTx<T>) -> Self {
+        value.inner
+    }
+}
+
+impl<T> From<ChannelSyncRx<T>> for InnerSyncChannelRx<T> {
+    fn from(value: ChannelSyncRx<T>) -> Self {
+        value.inner
+    }
+}
+
+impl<T> AsRef<InnerSyncChannelTx<T>> for ChannelSyncTx<T> {
+    fn as_ref(&self) -> &InnerSyncChannelTx<T> {
+        &self.inner
+    }
+}
+
+impl<T> AsRef<InnerSyncChannelRx<T>> for ChannelSyncRx<T> {
+    fn as_ref(&self) -> &InnerSyncChannelRx<T> {
+        &self.inner
+    }
+}
+
+#[macro_export]
+macro_rules! unwrap_channel {
+    ($channel: expr) => {
+        $channel.as_ref().as_ref()
+    };
+}
+
+#[cfg(feature = "channel_sync_crossbeam")]
+extern crate crossbeam_channel;
+
+/// To use the sync_select macro,
+/// you will have to combine it with the unwrap channel macro found above
+#[cfg(feature = "channel_sync_crossbeam")]
+//TODO: Update crossbeam to 5.13 so we have the new select biased
+pub use crossbeam_channel::{select as sync_select, select as sync_select_biased};
 
 /**
 Async and sync mixed channels (Allows us to connect async and sync environments together)
