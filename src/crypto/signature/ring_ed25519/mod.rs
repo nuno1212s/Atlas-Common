@@ -33,10 +33,10 @@ pub struct Signature(
 
 impl KeyPair {
     pub fn from_pkcs8(priv_key: &[u8]) -> Result<(Self, Vec<u8>)> {
-        let sk = match Ed25519KeyPair::from_pkcs8(priv_key) {
+        let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(priv_key) {
             Ok(sk) => sk,
             Err(err) => {
-                return Err!(SignError::InvalidPK(format!("{}", err)));
+                return Err!(SignError::InvalidPK(format!("{:?}", err)));
             }
         };
 
@@ -76,6 +76,21 @@ impl KeyPair {
 }
 
 impl PublicKey {
+    pub fn from_pkcs8(raw_bytes: &[u8]) -> Result<Self> {
+        
+        let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(raw_bytes) {
+            Ok(sk) => sk,
+            Err(err) => {
+                return Err!(SignError::InvalidPK(format!("{:?}", err)));
+            }
+        };
+
+        let pk = *sk.public_key();
+        let pk_bytes = pk.as_ref();
+
+        Ok(Self::from_bytes_unchecked(pk_bytes))
+    }
+    
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         if raw_bytes.len() < ED25519_PUBLIC_KEY_LEN {
             return Err!(SignError::PublicKeyLen(raw_bytes.len()));

@@ -55,10 +55,7 @@ pub struct InitConfig {
     /// Number of threads used by the async runtime.
     pub async_threads: usize,
     /// Number of threads used by the thread pool.
-    pub threadpool_threads: usize,
-
-    ///Unique ID, used to specify the log file this replica should use
-    pub id: Option<String>,
+    pub threadpool_threads: usize
 }
 
 /// Handle to the global data.
