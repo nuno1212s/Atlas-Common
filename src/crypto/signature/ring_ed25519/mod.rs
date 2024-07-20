@@ -77,7 +77,6 @@ impl KeyPair {
 
 impl PublicKey {
     pub fn from_pkcs8(raw_bytes: &[u8]) -> Result<Self> {
-        
         let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(raw_bytes) {
             Ok(sk) => sk,
             Err(err) => {
@@ -90,7 +89,7 @@ impl PublicKey {
 
         Ok(Self::from_bytes_unchecked(pk_bytes))
     }
-    
+
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         if raw_bytes.len() < ED25519_PUBLIC_KEY_LEN {
             return Err!(SignError::PublicKeyLen(raw_bytes.len()));

@@ -55,7 +55,7 @@ pub struct InitConfig {
     /// Number of threads used by the async runtime.
     pub async_threads: usize,
     /// Number of threads used by the thread pool.
-    pub threadpool_threads: usize
+    pub threadpool_threads: usize,
 }
 
 /// Handle to the global data.
