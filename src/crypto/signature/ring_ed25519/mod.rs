@@ -9,7 +9,7 @@ use crate::Err;
 
 use ring::signature::Ed25519KeyPair;
 use ring::{signature as rsig, signature::KeyPair as RKeyPair, signature::ED25519_PUBLIC_KEY_LEN};
-
+use ring::rand::SystemRandom;
 use crate::error::*;
 
 pub struct KeyPair {
@@ -32,6 +32,14 @@ pub struct Signature(
 );
 
 impl KeyPair {
+    pub fn generate() -> Result<(Self, Vec<u8>)> {
+        let mut random = SystemRandom::new();
+        let sk = rsig::Ed25519KeyPair::generate_pkcs8(&mut random)
+            .map_err(|e| SignError::GenerateKey(format!("{:?}", e)))?;
+    
+        Self::from_pkcs8(sk.as_ref())
+    }
+    
     pub fn from_pkcs8(priv_key: &[u8]) -> Result<(Self, Vec<u8>)> {
         let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(priv_key) {
             Ok(sk) => sk,

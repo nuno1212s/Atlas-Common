@@ -15,6 +15,8 @@ mod ring_ed25519;
 
 #[derive(Error, Debug)]
 pub enum SignError {
+    #[error("Failed to generate key {0:?}")]
+    GenerateKey(String),
     #[error("Invalid signature {0:?}")]
     InvalidSignature(String),
     #[error("Invalid private key {0:?}")]
@@ -78,6 +80,20 @@ pub struct Signature {
 }
 
 impl KeyPair {
+    pub fn generate_key_pair() -> Result<Self> {
+        let (inner, public_key) = {
+            #[cfg(feature = "crypto_signature_ring_ed25519")]
+            {
+                ring_ed25519::KeyPair::generate()?
+            }
+        };
+
+        Ok(KeyPair {
+            inner,
+            pub_key_bytes: public_key,
+        })
+    }
+    
     pub fn from_pkcs8(bytes: &[u8]) -> Result<Self> {
         let (inner, public_key) = {
             #[cfg(feature = "crypto_signature_ring_ed25519")]
