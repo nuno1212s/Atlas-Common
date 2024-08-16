@@ -93,7 +93,7 @@ impl KeyPair {
             pub_key_bytes: public_key,
         })
     }
-    
+
     pub fn from_pkcs8(bytes: &[u8]) -> Result<Self> {
         let (inner, public_key) = {
             #[cfg(feature = "crypto_signature_ring_ed25519")]

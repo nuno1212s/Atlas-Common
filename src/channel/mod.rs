@@ -332,8 +332,10 @@ pub fn new_bounded_sync<T>(
 }
 
 #[inline]
-pub fn new_unbounded_sync<T>(name: Option<&str>) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
-    let name = name.map(Arc::from);
+pub fn new_unbounded_sync<T>(
+    name: Option<impl Into<String>>,
+) -> (ChannelSyncTx<T>, ChannelSyncRx<T>) {
+    let name = name.map(|string| Arc::from(string.into()));
 
     #[cfg(feature = "channel_sync_crossbeam")]
     {

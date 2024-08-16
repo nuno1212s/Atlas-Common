@@ -101,7 +101,7 @@ webpki = "0.22.0"
 dashmap = "*"
 thread_local = "1.1.4"
 socket2 = "0.4"
-event-listener = "4.0.0"
+event-listener = "*"
 linked-hash-map = "0.5"
 rand = { version = "0.7" }
 
