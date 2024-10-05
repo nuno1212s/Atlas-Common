@@ -6,7 +6,7 @@ use std::pin::Pin;
 use flume::RecvTimeoutError;
 use std::task::{Context, Poll};
 use std::time::Duration;
-
+use flume::r#async::{RecvFut, SendFut};
 use crate::channel::{RecvError, SendReturnError, TryRecvError};
 use crate::error::*;
 use crate::Err;
@@ -24,7 +24,11 @@ pub struct ChannelMixedTx<T> {
 }
 
 pub struct ChannelRxFut<'a, T> {
-    inner: ::flume::r#async::RecvFut<'a, T>,
+    inner: RecvFut<'a, T>,
+}
+
+pub struct ChannelTxFut<'a, T> {
+    inner: SendFut<'a, T>,
 }
 
 impl<T> Clone for ChannelMixedTx<T> {
@@ -53,11 +57,8 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send(&self, message: T) -> std::result::Result<(), SendReturnError<T>> {
-        match self.inner.send_async(message).await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),
-        }
+    pub fn send(&self, message: T) -> ChannelTxFut<'_, T> {
+        self.inner.send_async(message).into()
     }
 
     #[inline]
@@ -92,9 +93,12 @@ impl<T> ChannelMixedRx<T> {
 
     #[inline]
     pub fn recv(&mut self) -> ChannelRxFut<'_, T> {
-        let inner = self.inner.recv_async();
-        ChannelRxFut { inner }
+        self.inner.recv_async().into()
     }
+
+}
+
+impl<T> ChannelMixedRx<T> {
 
     #[inline]
     pub fn recv_sync(&self) -> Result<T> {
@@ -135,6 +139,7 @@ impl<T> ChannelMixedRx<T> {
             },
         }
     }
+    
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
@@ -155,6 +160,57 @@ impl<'a, T> FusedFuture for ChannelRxFut<'a, T> {
     #[inline]
     fn is_terminated(&self) -> bool {
         self.inner.is_terminated()
+    }
+}
+
+impl<'a, T> Future for ChannelTxFut<'a, T> {
+    type Output = std::result::Result<(), SendReturnError<T>>;
+
+    #[inline]
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<std::result::Result<(), SendReturnError<T>>> {
+        Pin::new(&mut self.inner).poll(cx).map(|r| match r {
+            Ok(_) => Ok(()),
+            Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),
+        })
+    }
+}
+
+impl<'a, T> FusedFuture for ChannelTxFut<'a, T> {
+    #[inline]
+    fn is_terminated(&self) -> bool {
+        self.inner.is_terminated()
+    }
+}
+
+impl<'a, T> From<SendFut<'a, T>> for ChannelTxFut<'a, T> {
+    fn from(value: SendFut<'a, T>) -> Self {
+        Self {
+            inner: value,
+        }
+    }
+}
+
+impl<'a, T> From<RecvFut<'a, T>> for ChannelRxFut<'a, T> {
+    fn from(value: RecvFut<'a, T>) -> Self {
+        Self {
+            inner: value,
+        }
+    }
+}
+
+impl<'a, T> From<ChannelTxFut<'a, T>> for super::r#async::ChannelTxFut<'a, T> {
+    fn from(value: ChannelTxFut<'a, T>) -> Self {
+        Self {
+            inner: value,
+        }
+    }
+}
+
+impl<'a, T> From<ChannelRxFut<'a, T>> for super::r#async::ChannelRxFut<'a, T> {
+    fn from(value: ChannelRxFut<'a, T>) -> Self {
+        Self {
+            inner: value,
+        }
     }
 }
 

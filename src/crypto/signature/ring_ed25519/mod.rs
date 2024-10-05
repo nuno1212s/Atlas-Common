@@ -84,6 +84,7 @@ impl KeyPair {
 }
 
 impl PublicKey {
+    #[allow(dead_code)]
     pub fn from_pkcs8(raw_bytes: &[u8]) -> Result<Self> {
         let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(raw_bytes) {
             Ok(sk) => sk,
