@@ -424,7 +424,7 @@ pub enum DealerPartError {
 #[cfg(test)]
 pub mod dkg_test {
     use crate::channel;
-    use crate::channel::{ChannelSyncRx, ChannelSyncTx};
+    use crate::channel::sync::{ChannelSyncRx, ChannelSyncTx};
     use crate::crypto::threshold_crypto::thold_crypto::dkg::{
         Ack, DKGParams, DealerPart, DistributedKeyGenerator,
     };
@@ -545,7 +545,7 @@ pub mod dkg_test {
 
         let mut participating_nodes = (1..=NODES)
             .map(|node_id| {
-                let (_tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None::<&str>);
+                let (_tx, rx) = channel::sync::new_bounded_sync(QUEUE_SIZE, None::<&str>);
 
                 let (dkg, part) = DistributedKeyGenerator::new(
                     DKGParams {
@@ -617,7 +617,7 @@ pub mod dkg_test {
     )> {
         let participating_nodes = (1..=NODES)
             .map(|node_id| {
-                let (tx, rx) = channel::new_bounded_sync(QUEUE_SIZE, None::<&str>);
+                let (tx, rx) = channel::sync::new_bounded_sync(QUEUE_SIZE, None::<&str>);
 
                 let (dkg, part) = DistributedKeyGenerator::new(
                     DKGParams {
