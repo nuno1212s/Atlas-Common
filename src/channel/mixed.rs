@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
-use crate::channel::{SendError, SendReturnError, RecvError};
+use crate::channel::{SendError, SendReturnError, RecvError, TrySendReturnError};
 use crate::Err;
 
 #[allow(dead_code)]
@@ -8,6 +8,8 @@ use crate::Err;
 /**
 Async and sync mixed channels (Allows us to connect async and sync environments together)
  */
+
+use super::r#async::{ChannelTxFut, ChannelRxFut};
 
 #[cfg(feature = "channel_mixed_flume")]
 type InnerChannelMixedRx<T> = super::flume_mpmc::ChannelMixedRx<T>;
@@ -63,13 +65,8 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub async fn recv_async(&mut self) -> crate::error::Result<T> {
-        match self.inner.recv().await {
-            Ok(val) => Ok(val),
-            Err(_err) => {
-                Err!(RecvError::ChannelDc)
-            }
-        }
+    pub fn recv_async(&mut self) -> ChannelRxFut<'_, T> {
+        self.inner.recv().into()
     }
 
     #[inline]
@@ -90,37 +87,39 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> crate::error::Result<()> {
-        self.send_async_return(value)
-            .await
-            .map_err(SendError::from)
-            .map_err(anyhow::Error::from)
+    pub fn send_async(&self, value: T) -> ChannelTxFut<'_, T> {
+        self.inner.send(value).into()
     }
 
+    #[cfg(not(feature = "channel_mixed_kanal"))]
     #[inline]
-    pub async fn send_async_return(&self, value: T) -> Result<(), SendReturnError<T>> {
-        self.inner.send(value).await
+    pub fn send_async_return(&self, value: T) -> ChannelTxFut<'_, T> {
+        self.inner.send(value).into()
     }
 
     #[inline]
     pub fn send(&self, value: T) -> crate::error::Result<()> {
-        self.send_return(value)
-            .map_err(SendError::from)
-            .map_err(anyhow::Error::from)
+        Ok(self.inner.send_sync(value)?)
     }
 
+    #[cfg(not(feature = "channel_mixed_kanal"))]
     #[inline]
     pub fn send_return(&self, value: T) -> Result<(), SendReturnError<T>> {
-        self.inner.send_sync(value)
+        self.inner.send_sync_return(value)
+    }
+    
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> crate::error::Result<()> {
+        Ok(self.inner.send_timeout_sync(value, timeout)?)
     }
 
+    #[cfg(not(feature = "channel_mixed_kanal"))]
     #[inline]
-    pub fn send_timeout(
+    pub fn send_timeout_return(
         &self,
         value: T,
         timeout: Duration,
-    ) -> Result<(), SendReturnError<T>> {
-        self.inner.send_timeout(value, timeout)
+    ) -> Result<(), TrySendReturnError<T>> {
+        self.inner.send_timeout_sync_return(value, timeout)
     }
 }
 

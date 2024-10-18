@@ -1,18 +1,18 @@
 use std::future::Future;
-use std::pin::Pin;
+use std::pin::{pin, Pin};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use futures::future::FusedFuture;
-use crate::channel::{flume_mpmc, SendReturnError};
+use crate::channel::{SendError, SendReturnError};
 
 /**
  * ASYNCHRONOUS CHANNEL
  */
 
 #[cfg(feature = "channel_flume_mpmc")]
-type InnerAsyncChannelTx<T> = flume_mpmc::ChannelMixedTx<T>;
+type InnerAsyncChannelTx<T> = super::flume_mpmc::ChannelMixedTx<T>;
 #[cfg(feature = "channel_flume_mpmc")]
-type InnerAsyncChannelRx<T> = flume_mpmc::ChannelMixedRx<T>;
+type InnerAsyncChannelRx<T> = super::flume_mpmc::ChannelMixedRx<T>;
 
 #[cfg(feature = "channel_async_kanal")]
 type InnerAsyncChannelTx<T> = crate::channel::kanal::r#async::ChannelMixedTx<T>;
@@ -34,7 +34,7 @@ pub struct ChannelAsyncRx<T> {
 
 
 #[cfg(feature = "channel_flume_mpmc")]
-type InnerChannelRxFut<'a, T> = flume_mpmc::ChannelRxFut<'a, T>;
+type InnerChannelRxFut<'a, T> = super::flume_mpmc::ChannelRxFut<'a, T>;
 
 #[cfg(feature = "channel_async_channel_mpmc")]
 type InnerChannelRxFut<'a, T> = crate::channel::async_channel_mpmc::ChannelRxFut<'a, T>;
@@ -48,7 +48,7 @@ pub struct ChannelRxFut<'a, T> {
 }
 
 #[cfg(feature = "channel_flume_mpmc")]
-type InnerChannelTxFut<'a, T> = flume_mpmc::ChannelTxFut<'a, T>;
+type InnerChannelTxFut<'a, T> = super::flume_mpmc::ChannelTxFut<'a, T>;
 
 #[cfg(feature = "channel_async_channel_mpmc")]
 type InnerChannelTxFut<'a, T> = crate::channel::async_channel_mpmc::ChannelTxFut<'a, T>;
@@ -99,33 +99,23 @@ impl<'a, T> Future for ChannelRxFut<'a, T> {
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<crate::error::Result<T>> {
-        Pin::new(&mut self.inner).poll(cx)
-    }
-}
-
-impl<'a, T> FusedFuture for ChannelRxFut<'a, T> {
-    #[inline]
-    fn is_terminated(&self) -> bool {
-        self.inner.is_terminated()
+        pin!(&mut self.inner).poll(cx)
     }
 }
 
 impl<'a, T> Future for ChannelTxFut<'a, T> {
-    type Output = Result<(), SendReturnError<T>>;
+    type Output = Result<(), SendError>;
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        Pin::new(&mut self.inner).poll(cx)
+        pin!(&mut self.inner).poll(cx).map(|r| match r {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                Err(SendError::FailedToSend)
+            }
+        })
     }
 }
-
-impl<'a, T> FusedFuture for ChannelTxFut<'a, T> {
-    #[inline]
-    fn is_terminated(&self) -> bool {
-        self.inner.is_terminated()
-    }
-}
-
 
 /// Creates a new general purpose channel that can queue up to
 /// `bound` messages from different async senders.
@@ -141,7 +131,7 @@ pub fn new_bounded_async<T>(bound: usize, name: Option<impl Into<String>>) -> (C
         }
         #[cfg(feature= "channel_mixed_kanal")]
         {
-            crate::channel::kanal::new_bounded(bound)
+            crate::channel::kanal::r#async::new_bounded(bound)
         }
         #[cfg(feature = "channel_async_channel_mpmc")]
         {
@@ -155,3 +145,4 @@ pub fn new_bounded_async<T>(bound: usize, name: Option<impl Into<String>>) -> (C
 
     (ttx, rrx)
 }
+

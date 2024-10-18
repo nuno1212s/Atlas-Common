@@ -1,6 +1,5 @@
 
-use tracing::error;
-use crate::channel::{SendReturnError, TryRecvError, TrySendReturnError};
+use crate::channel::{TryRecvError, TrySendReturnError};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -73,12 +72,26 @@ impl<T> ChannelSyncTx<T> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
+    #[cfg(feature = "channel_sync_kanal")]
     #[inline]
     pub fn send(&self, value: T) -> crate::error::Result<()> {
         Ok(self.inner.send(value)?)
     }
+    
+    #[inline]
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> crate::error::Result<()> {
+        Ok(self.inner.send_timeout(value, timeout)?)
+    }
 
+    #[inline]
+    pub fn try_send(&self, value: T) -> crate::error::Result<()> {
+        Ok(self.inner.try_send(value)?)
+    }
+}
+
+#[cfg(not(feature  = "channel_sync_kanal"))]
+impl<T> ChannelSyncTx<T> {
+    
     #[inline]
     pub fn send_return(&self, value: T) -> Result<(), SendReturnError<T>> {
         let value = match self.inner.try_send_return(value) {
@@ -106,30 +119,21 @@ impl<T> ChannelSyncTx<T> {
 
         self.inner.send_return(value)
     }
-
-    #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> crate::error::Result<()> {
-        Ok(self.inner.send_timeout(value, timeout)?)
-    }
-
-    #[inline]
-    pub fn send_timeout_return(
-        &self,
-        value: T,
-        timeout: Duration,
-    ) -> Result<(), TrySendReturnError<T>> {
-        self.inner.send_return_timeout(value, timeout)
-    }
-
-    #[inline]
-    pub fn try_send(&self, value: T) -> crate::error::Result<()> {
-        Ok(self.inner.try_send(value)?)
-    }
-
+    
     #[inline]
     pub fn try_send_return(&self, value: T) -> Result<(), TrySendReturnError<T>> {
         self.inner.try_send_return(value)
     }
+}
+
+#[cfg(feature = "channel_sync_kanal")]
+impl<T> ChannelSyncTx<T> where T: Clone {
+    
+    #[inline]
+    pub fn try_send_return(&self, value: T) -> Result<(), TrySendReturnError<T>> {
+        self.inner.try_send_return(value)
+    }
+    
 }
 
 impl<T> Clone for ChannelSyncTx<T> {
@@ -248,11 +252,36 @@ macro_rules! unwrap_channel {
     };
 }
 
+#[macro_export]
+macro_rules! exhaust_and_consume {
+    
+    ($channel:expr, $self_obj:expr, $consumption:ident) => {
+        while let Ok(message) = $channel.try_recv() {
+            $self_obj.$consumption(message)?;
+        }
+    };
+    ($channel: expr, $self_obj:expr, $consumption:ident, $timeout: expr) => {
+        while let Ok(message) = $channel.recv_timeout($timeout) {
+            $self_obj.$consumption(message)?;
+        }
+    };
+    ($existing_msg: expr, $channel: expr, $self_obj: expr, $consumption: ident) => {
+        {
+            $self_obj.$consumption($existing_msg)?;
+            
+            while let Ok(message) = $channel.try_recv() {
+                $self_obj.$consumption(message)?;
+            }
+            
+            Ok(())
+        }
+    };
+}
+
 #[cfg(feature = "channel_sync_crossbeam")]
 extern crate crossbeam_channel;
 
 /// To use the sync_select macro,
 /// you will have to combine it with the unwrap channel macro found above
 #[cfg(feature = "channel_sync_crossbeam")]
-//TODO: Update crossbeam to 5.13 so we have the new select biased
 pub use crossbeam_channel::{select as sync_select, select as sync_select_biased};

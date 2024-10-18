@@ -69,6 +69,26 @@ impl<T> ChannelSyncTx<T> {
     }
 }
 
+impl<T> ChannelSyncTx<T>
+where
+    T: Clone,
+{
+    pub fn try_send_return(&self, value: T) -> std::result::Result<(), super::TrySendReturnError<T>> {
+        let value_clone = value.clone();
+        
+        match self.inner.try_send(value) {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(super::TrySendReturnError::Full(value_clone)),
+            Err(err) => match err {
+                SendError::ReceiveClosed | SendError::Closed => {
+                    Err(super::TrySendReturnError::Disconnected(value_clone))
+                }
+            },
+        }
+    }
+    
+}
+
 impl<T> ChannelSyncRx<T> {
     #[inline]
     pub fn try_recv(&self) -> std::result::Result<T, TryRecvError> {

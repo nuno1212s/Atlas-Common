@@ -1,8 +1,7 @@
 use std::future::Future;
-use std::pin::Pin;
+use std::pin::{Pin};
 use std::task::{Context, Poll};
 use std::time::Duration;
-use futures::future::FusedFuture;
 use kanal::{ReceiveError, ReceiveErrorTimeout, ReceiveFuture, SendErrorTimeout, SendFuture};
 use crate::channel::{SendError, TrySendError, RecvError, TryRecvError};
 use crate::Err;
@@ -17,11 +16,12 @@ pub struct ChannelMixedRx<T> {
 pub struct ChannelMixedTx<T> {
     inner: kanal::AsyncSender<T>,
 }
-
+#[must_use = "futures do nothing unless you .await or poll them"]
 pub struct ChannelRxFut<'a, T> {
     inner: ReceiveFuture<'a, T>,
 }
 
+#[must_use = "futures do nothing unless you .await or poll them"]
 pub struct ChannelTxFut<'a, T> {
     inner: SendFuture<'a, T>,
 }
@@ -80,6 +80,7 @@ impl<T> ChannelMixedTx<T> {
             },
         }
     }
+    
 }
 
 impl<T> ChannelMixedRx<T> {
@@ -140,7 +141,9 @@ impl<'a, T> Future for ChannelRxFut<'a, T> {
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<crate::error::Result<T>> {
-        Pin::new(&mut self.inner).poll(cx).map(|r| match r {
+        let pinned_inner = unsafe { self.as_mut().map_unchecked_mut(|s| &mut s.inner) };
+
+        pinned_inner.poll(cx).map(|r| match r {
             Ok(res) => Ok(res),
             Err(_) => {
                 Err!(RecvError::ChannelDc)
@@ -149,12 +152,25 @@ impl<'a, T> Future for ChannelRxFut<'a, T> {
     }
 }
 
-impl<'a, T> FusedFuture for ChannelRxFut<'a, T> {
+impl<'a, T> Unpin for ChannelRxFut<'a, T> {}
+
+impl<'a, T> Future for ChannelTxFut<'a, T> {
+    type Output = Result<(), SendError>;
+
     #[inline]
-    fn is_terminated(&self) -> bool {
-        self.inner.is_terminated()
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let pinned_inner = unsafe { self.as_mut().map_unchecked_mut(|s| &mut s.inner) };
+        
+        pinned_inner.poll(cx).map(|r| match r {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                Err(SendError::FailedToSend)
+            }
+        })
     }
 }
+
+impl<'a, T> Unpin for ChannelTxFut<'a, T> {}
 
 impl<'a, T> From<ReceiveFuture<'a, T>> for ChannelRxFut<'a, T> {
     fn from(inner: ReceiveFuture<'a, T>) -> Self {
@@ -164,6 +180,18 @@ impl<'a, T> From<ReceiveFuture<'a, T>> for ChannelRxFut<'a, T> {
 
 impl<'a, T> From<SendFuture<'a, T>> for ChannelTxFut<'a, T> {
     fn from(inner: SendFuture<'a, T>) -> Self {
+        Self { inner }
+    }
+}
+
+impl<'a, T> From<ChannelTxFut<'a, T>> for crate::channel::r#async::ChannelTxFut<'a, T> {
+    fn from(inner: ChannelTxFut<'a, T>) -> Self {
+        Self { inner }
+    }
+}
+
+impl<'a, T> From<ChannelRxFut<'a, T>> for crate::channel::r#async::ChannelRxFut<'a, T> {
+    fn from(inner: ChannelRxFut<'a, T>) -> Self {
         Self { inner }
     }
 }
