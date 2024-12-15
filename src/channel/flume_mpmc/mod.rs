@@ -3,14 +3,14 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use flume::RecvTimeoutError;
-use std::task::{Context, Poll};
-use std::time::Duration;
-use flume::r#async::{RecvFut, SendFut};
-use crate::channel::{RecvError, SendReturnError, TryRecvError};
+use crate::channel::{RecvError, SendReturnError, TryRecvError, TrySendReturnError};
 use crate::error::*;
 use crate::Err;
+use flume::r#async::{RecvFut, SendFut};
+use flume::{RecvTimeoutError, SendTimeoutError};
 use futures::future::FusedFuture;
+use std::task::{Context, Poll};
+use std::time::Duration;
 
 /**
 Mixed channels
@@ -70,16 +70,38 @@ impl<T> ChannelMixedTx<T> {
     }
 
     #[inline]
-    pub fn send_timeout(
+    pub fn send_sync_return(&self, message: T) -> std::result::Result<(), SendReturnError<T>> {
+        self.send_sync(message)
+    }
+
+    #[inline]
+    pub fn send_timeout_sync(
         &self,
         message: T,
         timeout: Duration,
-    ) -> std::result::Result<(), SendReturnError<T>> {
+    ) -> std::result::Result<(), TrySendReturnError<T>> {
         match self.inner.send_timeout(message, timeout) {
             Ok(_) => Ok(()),
-            Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),
+            Err(err) => match err {
+                SendTimeoutError::Timeout(e) => {
+                    Err(TrySendReturnError::Timeout(e))
+                }
+                SendTimeoutError::Disconnected(e) => {
+                    Err(TrySendReturnError::Disconnected(e))
+                }
+            },
         }
     }
+
+    #[inline]
+    pub fn send_timeout_sync_return(
+        &self,
+        message: T,
+        timeout: Duration,
+    ) -> std::result::Result<(), TrySendReturnError<T>> {
+        self.send_timeout_sync(message, timeout)
+    }
+    
 }
 
 impl<T> ChannelMixedRx<T> {
@@ -95,11 +117,9 @@ impl<T> ChannelMixedRx<T> {
     pub fn recv(&mut self) -> ChannelRxFut<'_, T> {
         self.inner.recv_async().into()
     }
-
 }
 
 impl<T> ChannelMixedRx<T> {
-
     #[inline]
     pub fn recv_sync(&self) -> Result<T> {
         match self.inner.recv() {
@@ -139,7 +159,6 @@ impl<T> ChannelMixedRx<T> {
             },
         }
     }
-    
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
@@ -167,7 +186,10 @@ impl<'a, T> Future for ChannelTxFut<'a, T> {
     type Output = std::result::Result<(), SendReturnError<T>>;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<std::result::Result<(), SendReturnError<T>>> {
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context,
+    ) -> Poll<std::result::Result<(), SendReturnError<T>>> {
         Pin::new(&mut self.inner).poll(cx).map(|r| match r {
             Ok(_) => Ok(()),
             Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),
@@ -184,33 +206,25 @@ impl<'a, T> FusedFuture for ChannelTxFut<'a, T> {
 
 impl<'a, T> From<SendFut<'a, T>> for ChannelTxFut<'a, T> {
     fn from(value: SendFut<'a, T>) -> Self {
-        Self {
-            inner: value,
-        }
+        Self { inner: value }
     }
 }
 
 impl<'a, T> From<RecvFut<'a, T>> for ChannelRxFut<'a, T> {
     fn from(value: RecvFut<'a, T>) -> Self {
-        Self {
-            inner: value,
-        }
+        Self { inner: value }
     }
 }
 
 impl<'a, T> From<ChannelTxFut<'a, T>> for super::r#async::ChannelTxFut<'a, T> {
     fn from(value: ChannelTxFut<'a, T>) -> Self {
-        Self {
-            inner: value,
-        }
+        Self { inner: value }
     }
 }
 
 impl<'a, T> From<ChannelRxFut<'a, T>> for super::r#async::ChannelRxFut<'a, T> {
     fn from(value: ChannelRxFut<'a, T>) -> Self {
-        Self {
-            inner: value,
-        }
+        Self { inner: value }
     }
 }
 

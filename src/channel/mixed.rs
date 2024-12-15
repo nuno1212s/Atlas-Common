@@ -75,7 +75,8 @@ impl<T> ChannelMixedRx<T> {
     }
 }
 
-impl<T> ChannelMixedTx<T> {
+impl<T> ChannelMixedTx<T> 
+where T: 'static {
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()

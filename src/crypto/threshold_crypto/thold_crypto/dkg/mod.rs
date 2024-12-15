@@ -11,6 +11,7 @@ use getset::{CopyGetters, Getters, MutGetters, Setters};
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use bincode::config::Configuration;
 use thiserror::Error;
 use threshold_crypto::ff::Field;
 use threshold_crypto::group::CurveAffine;
@@ -116,7 +117,7 @@ impl DistributedKeyGenerator {
             commitment: my_gen.commitment(),
             share_values: (1..=params.dealers())
                 .map(|i| my_gen.row(i))
-                .map(|row| bincode::serialize(&row).unwrap())
+                .map(|row| bincode::serde::encode_to_vec(&row, bincode::config::standard()).unwrap())
                 .collect(),
         };
 
@@ -146,7 +147,7 @@ impl DistributedKeyGenerator {
         for node in 1..=self.params.dealers() {
             let node = row.evaluate(node);
 
-            let serialized = bincode::serialize(&FieldWrap(node))?;
+            let serialized = bincode::serde::encode_to_vec(&FieldWrap(node), bincode::config::standard())?;
 
             values.push(serialized);
         }
@@ -242,7 +243,7 @@ impl DistributedKeyGenerator {
         // Get the row that is meant for us
         let row = rows.swap_remove(self.our_id - 1);
 
-        let row: Poly = bincode::deserialize(&row)?;
+        let (row, _): (Poly, _) = bincode::serde::decode_from_slice(&row, bincode::config::standard())?;
 
         eprintln!(
             "Dealer part {}: Received row from dealer {}: {:?} in ID {}",
@@ -299,9 +300,8 @@ impl DistributedKeyGenerator {
 
         let received_value = commitments.swap_remove(self.our_id - 1);
 
-        let received_value = bincode::deserialize::<FieldWrap<Fr>>(&received_value)
-            .unwrap()
-            .into_inner();
+        let received_value = bincode::serde::decode_from_slice::<FieldWrap<Fr>, Configuration>(&received_value, bincode::config::standard())
+            .unwrap().0.0;
 
         eprintln!(
             "Dealer ack {}: Received ack from dealer {}: {:?} in ID {}",

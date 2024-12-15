@@ -127,15 +127,15 @@ pub fn new_bounded_async<T>(bound: usize, name: Option<impl Into<String>>) -> (C
     let (tx, rx) = {
         #[cfg(feature = "channel_flume_mpmc")]
         {
-            flume_mpmc::new_bounded(bound)
+            super::flume_mpmc::new_bounded(bound)
         }
         #[cfg(feature= "channel_mixed_kanal")]
         {
-            crate::channel::kanal::r#async::new_bounded(bound)
+            super::kanal::r#async::new_bounded(bound)
         }
         #[cfg(feature = "channel_async_channel_mpmc")]
         {
-            crate::channel::async_channel_mpmc::new_bounded(bound)
+            super::async_channel_mpmc::new_bounded(bound)
         }
     };
 
