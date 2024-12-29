@@ -5,6 +5,7 @@ use crate::error::*;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 use threshold_crypto::{Fr, IntoFr};
+use crate::crypto::threshold_crypto::thold_crypto::SecretKeySet;
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
@@ -35,8 +36,8 @@ pub struct PublicKey {
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct PrivateKey {
-    key: thold_crypto::PrivateKey,
+pub struct PrivateKeySet {
+    key: thold_crypto::SecretKeySet,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -114,4 +115,26 @@ impl PrivateKeyPart {
             key: thold_crypto::PrivateKeyPart::from_mut(sk),
         }
     }
+}
+
+impl PrivateKeySet {
+    
+    pub fn gen_random(n: usize) -> Result<Self> {
+        SecretKeySet::generate_random(n).map(|key| Self {
+            key
+        })
+    }
+    
+    pub fn public_key_set(&self) -> PublicKeySet {
+        PublicKeySet {
+            key: self.key.public_key_set()
+        }
+    }
+    
+    pub fn private_key_part(&self, index: usize) -> Result<PrivateKeyPart> {
+        self.key.get_key_share(index).map(|key| PrivateKeyPart {
+            key
+        })
+    }
+    
 }

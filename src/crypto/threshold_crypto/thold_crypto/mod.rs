@@ -12,45 +12,40 @@ pub mod dkg;
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PublicKey {
+pub(super) struct PublicKey {
     key: threshold_crypto::PublicKey,
-}
-
-#[derive(Clone, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct PrivateKey {
-    key: threshold_crypto::SecretKey,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PublicKeyPart {
+pub (super)struct PublicKeyPart {
     key: threshold_crypto::PublicKeyShare,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct PrivateKeyPart {
+pub(super) struct PrivateKeyPart {
     key: threshold_crypto::SecretKeyShare,
 }
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PartialSignature {
+pub(super) struct PartialSignature {
     sig: threshold_crypto::SignatureShare,
 }
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct Signature {
+pub(super) struct Signature {
     sig: threshold_crypto::Signature,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct SecretKeySet {
+pub(super) struct SecretKeySet {
     sk_set: threshold_crypto::SecretKeySet,
 }
 
@@ -58,7 +53,7 @@ pub struct SecretKeySet {
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PublicKeySet {
+pub(super) struct PublicKeySet {
     pk_set: threshold_crypto::PublicKeySet,
 }
 
