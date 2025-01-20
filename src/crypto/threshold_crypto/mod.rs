@@ -40,14 +40,14 @@ pub struct PrivateKeySet {
     key: thold_crypto::SecretKeySet,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PartialSignature {
     sig: thold_crypto::PartialSignature,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct CombinedSignature {
@@ -121,8 +121,12 @@ impl PrivateKeyPart {
 }
 
 impl PrivateKeySet {
-    pub fn gen_random(n: usize) -> Self {
-        let key = SecretKeySet::generate_random(n);
+    
+    /// Generate a new random private key set.
+    /// Receives the threshold for the private key set.
+    /// To combine signatures, we need at least `threshold` + 1 signatures.
+    pub fn gen_random(threshold: usize) -> Self {
+        let key = SecretKeySet::generate_random(threshold);
         
         Self { key }
     }

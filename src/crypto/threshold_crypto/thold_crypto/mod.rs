@@ -31,14 +31,14 @@ pub(super) struct PrivateKeyPart {
     key: threshold_crypto::SecretKeyShare,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub(super) struct PartialSignature {
     sig: threshold_crypto::SignatureShare,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub(super) struct Signature {
