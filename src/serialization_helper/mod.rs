@@ -11,15 +11,24 @@ use serde::{Deserialize, Serialize};
 ///
 /// Any raw struct type with no internal references will follow this requirement
 #[cfg(feature = "serialize_serde")]
-pub trait SerType: 'static + for<'a> Deserialize<'a> + Serialize + Send + Sync + Clone {}
+pub trait SerMsg: 'static + for<'a> Deserialize<'a> + Serialize + Send + Sync + Clone {}
 
 #[cfg(feature = "serialize_capnp")]
-pub trait SerType: 'static + Send + Clone {}
+pub trait SerMessage: 'static + Send + Clone {}
+
+#[cfg(feature = "serialize_serde")]
+pub trait NonSyncSerMsg: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}
 
 /// Automatically implement the SerType trait for all types that implement the serde traits
 /// which, since we do not require any function impls, is the only thing we require
 #[cfg(feature = "serialize_serde")]
-impl<T> SerType for T where T: 'static + for<'a> Deserialize<'a> + Serialize + Send + Sync + Clone {}
+impl<T> SerMsg for T where T: 'static + for<'a> Deserialize<'a> + Serialize + Send + Sync + Clone {}
 
 #[cfg(feature = "serialize_capnp")]
-impl<T> SerType for T where T: 'static + Send + Clone {}
+impl<T> SerMsg for T where T: 'static + Send + Clone {}
+
+#[cfg(feature = "serialize_serde")]
+impl<T> NonSyncSerMsg for T where T: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}
+
+#[cfg(feature = "serialize_capnp")]
+impl<T> NonSyncSerMsg for T where T: 'static + Clone {}
