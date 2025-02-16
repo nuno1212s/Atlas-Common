@@ -25,7 +25,7 @@ pub trait NonSyncSerMsg: 'static + for<'a> Deserialize<'a> + Serialize + Clone +
 impl<T> SerMsg for T where T: NonSyncSerMsg + Sync {}
 
 #[cfg(feature = "serialize_capnp")]
-impl<T> SerMsg for T where T: NonSyncSerMsg + Sync  {}
+impl<T> SerMsg for T where T: NonSyncSerMsg + Sync {}
 
 #[cfg(feature = "serialize_serde")]
 impl<T> NonSyncSerMsg for T where T: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}

@@ -18,11 +18,11 @@ pub struct ChannelAsyncRx<T> {
 }
 
 pub struct ChannelRxFut<'a, T> {
-    inner: async_channel::Recv<'a, T>
+    inner: async_channel::Recv<'a, T>,
 }
 
 pub struct ChannelTxFut<'a, T> {
-    inner: async_channel::Send<'a, T>
+    inner: async_channel::Send<'a, T>,
 }
 
 impl<T> Clone for ChannelAsyncTx<T> {
@@ -48,10 +48,9 @@ pub fn new_bounded<T>(bound: usize) -> (ChannelAsyncTx<T>, ChannelAsyncRx<T>) {
 
 impl<T> ChannelAsyncTx<T> {
     #[inline]
-    pub fn send(&mut self, message: T) -> ChannelTxFut<'_, T>{
+    pub fn send(&mut self, message: T) -> ChannelTxFut<'_, T> {
         self.inner.send(message).into()
     }
-    
 }
 
 impl<T> ChannelAsyncRx<T> {
@@ -80,7 +79,6 @@ impl<'a, T> FusedFuture for ChannelRxFut<'a, T> {
 }
 
 impl<'a, T> Future for ChannelTxFut<'a, T> {
-
     type Output = Result<()>;
 
     #[inline]
@@ -89,7 +87,6 @@ impl<'a, T> Future for ChannelTxFut<'a, T> {
             .poll_next(cx)
             .map(|opt| opt.ok_or(SendError::ChannelDc.into()))
     }
-    
 }
 
 impl<'a, T> FusedFuture for ChannelTxFut<'a, T> {

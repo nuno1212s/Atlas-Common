@@ -1,9 +1,9 @@
+use crate::channel::{SendError, SendReturnError};
+use futures::future::FusedFuture;
 use std::future::Future;
 use std::pin::{pin, Pin};
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use futures::future::FusedFuture;
-use crate::channel::{SendError, SendReturnError};
 
 /**
  * ASYNCHRONOUS CHANNEL
@@ -29,9 +29,8 @@ pub struct ChannelAsyncTx<T> {
 /// General purpose channel's receiving half.
 pub struct ChannelAsyncRx<T> {
     name: Option<Arc<str>>,
-    inner: InnerAsyncChannelRx<T>
+    inner: InnerAsyncChannelRx<T>,
 }
-
 
 #[cfg(feature = "channel_flume_mpmc")]
 type InnerChannelRxFut<'a, T> = super::flume_mpmc::ChannelRxFut<'a, T>;
@@ -44,7 +43,7 @@ type InnerChannelRxFut<'a, T> = crate::channel::kanal::r#async::ChannelRxFut<'a,
 
 /// Future for a general purpose channel's receiving operation.
 pub struct ChannelRxFut<'a, T> {
-    pub(crate) inner: InnerChannelRxFut<'a, T>
+    pub(crate) inner: InnerChannelRxFut<'a, T>,
 }
 
 #[cfg(feature = "channel_flume_mpmc")]
@@ -57,14 +56,17 @@ type InnerChannelTxFut<'a, T> = crate::channel::async_channel_mpmc::ChannelTxFut
 type InnerChannelTxFut<'a, T> = crate::channel::kanal::r#async::ChannelTxFut<'a, T>;
 
 pub struct ChannelTxFut<'a, T> {
-    pub(crate) inner: InnerChannelTxFut<'a, T>
+    pub(crate) inner: InnerChannelTxFut<'a, T>,
 }
 
 impl<T> Clone for ChannelAsyncTx<T> {
     #[inline]
     fn clone(&self) -> Self {
         let inner = self.inner.clone();
-        Self { name: self.name.clone(), inner }
+        Self {
+            name: self.name.clone(),
+            inner,
+        }
     }
 }
 
@@ -72,7 +74,10 @@ impl<T> Clone for ChannelAsyncRx<T> {
     #[inline]
     fn clone(&self) -> Self {
         let inner = self.inner.clone();
-        Self { name: self.name.clone(), inner }
+        Self {
+            name: self.name.clone(),
+            inner,
+        }
     }
 }
 
@@ -110,9 +115,7 @@ impl<'a, T> Future for ChannelTxFut<'a, T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         pin!(&mut self.inner).poll(cx).map(|r| match r {
             Ok(_) => Ok(()),
-            Err(_) => {
-                Err(SendError::FailedToSend)
-            }
+            Err(_) => Err(SendError::FailedToSend),
         })
     }
 }
@@ -120,8 +123,10 @@ impl<'a, T> Future for ChannelTxFut<'a, T> {
 /// Creates a new general purpose channel that can queue up to
 /// `bound` messages from different async senders.
 #[inline]
-pub fn new_bounded_async<T>(bound: usize, name: Option<impl Into<String>>) -> (ChannelAsyncTx<T>, ChannelAsyncRx<T>) {
-
+pub fn new_bounded_async<T>(
+    bound: usize,
+    name: Option<impl Into<String>>,
+) -> (ChannelAsyncTx<T>, ChannelAsyncRx<T>) {
     let name = name.map(|string| Arc::from(string.into()));
 
     let (tx, rx) = {
@@ -129,7 +134,7 @@ pub fn new_bounded_async<T>(bound: usize, name: Option<impl Into<String>>) -> (C
         {
             super::flume_mpmc::new_bounded(bound)
         }
-        #[cfg(feature= "channel_mixed_kanal")]
+        #[cfg(feature = "channel_mixed_kanal")]
         {
             super::kanal::r#async::new_bounded(bound)
         }
@@ -139,10 +144,12 @@ pub fn new_bounded_async<T>(bound: usize, name: Option<impl Into<String>>) -> (C
         }
     };
 
-    let ttx = ChannelAsyncTx { name: name.clone(), inner: tx };
+    let ttx = ChannelAsyncTx {
+        name: name.clone(),
+        inner: tx,
+    };
 
     let rrx = ChannelAsyncRx { name, inner: rx };
 
     (ttx, rrx)
 }
-

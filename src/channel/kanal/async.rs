@@ -1,10 +1,10 @@
+use crate::channel::{RecvError, SendError, TryRecvError, TrySendError};
+use crate::Err;
+use kanal::{ReceiveError, ReceiveErrorTimeout, ReceiveFuture, SendErrorTimeout, SendFuture};
 use std::future::Future;
-use std::pin::{Pin};
+use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use kanal::{ReceiveError, ReceiveErrorTimeout, ReceiveFuture, SendErrorTimeout, SendFuture};
-use crate::channel::{SendError, TrySendError, RecvError, TryRecvError};
-use crate::Err;
 
 /**
 Mixed channels
@@ -72,15 +72,14 @@ impl<T> ChannelMixedTx<T> {
     ) -> std::result::Result<(), TrySendError> {
         match self.inner.as_sync().send_timeout(message, timeout) {
             Ok(_) => Ok(()),
-            Err(err) => {
-                match err {
-                    SendErrorTimeout::Closed  | SendErrorTimeout::ReceiveClosed => Err(TrySendError::Disconnected),
-                    SendErrorTimeout::Timeout => Err(TrySendError::Timeout),
+            Err(err) => match err {
+                SendErrorTimeout::Closed | SendErrorTimeout::ReceiveClosed => {
+                    Err(TrySendError::Disconnected)
                 }
+                SendErrorTimeout::Timeout => Err(TrySendError::Timeout),
             },
         }
     }
-    
 }
 
 impl<T> ChannelMixedRx<T> {
@@ -127,7 +126,7 @@ impl<T> ChannelMixedRx<T> {
         match self.inner.as_sync().try_recv() {
             Ok(Some(ele)) => Ok(ele),
             Ok(None) => Err!(TryRecvError::ChannelEmpty),
-            Err(err) => match err { 
+            Err(err) => match err {
                 ReceiveError::Closed | ReceiveError::SendClosed => {
                     Err!(TryRecvError::ChannelDc)
                 }
@@ -160,12 +159,10 @@ impl<'a, T> Future for ChannelTxFut<'a, T> {
     #[inline]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let pinned_inner = unsafe { self.as_mut().map_unchecked_mut(|s| &mut s.inner) };
-        
+
         pinned_inner.poll(cx).map(|r| match r {
             Ok(_) => Ok(()),
-            Err(_) => {
-                Err(SendError::FailedToSend)
-            }
+            Err(_) => Err(SendError::FailedToSend),
         })
     }
 }
@@ -199,7 +196,7 @@ impl<'a, T> From<ChannelRxFut<'a, T>> for crate::channel::r#async::ChannelRxFut<
 pub fn new_bounded<T>(bound: usize) -> (ChannelMixedTx<T>, ChannelMixedRx<T>) {
     let (tx, rx) = kanal::bounded_async(bound);
 
-    (ChannelMixedTx { inner: tx }, ChannelMixedRx { inner: rx})
+    (ChannelMixedTx { inner: tx }, ChannelMixedRx { inner: rx })
 }
 
 /// Generate a new unbounded channel from flume, wrap it in our own channel and return it

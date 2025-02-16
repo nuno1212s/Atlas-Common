@@ -1,4 +1,6 @@
-use crate::channel::{RecvError, SendError, SendReturnError, TryRecvError, TrySendError, TrySendReturnError};
+use crate::channel::{
+    RecvError, SendError, SendReturnError, TryRecvError, TrySendError, TrySendReturnError,
+};
 use crate::error::*;
 use crate::Err;
 use crossbeam_channel::{Receiver, RecvTimeoutError, SendTimeoutError, Sender};
@@ -30,7 +32,6 @@ impl<T> Clone for ChannelSyncRx<T> {
 }
 
 impl<T> ChannelSyncTx<T> {
-    
     #[inline]
     pub fn send_return(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
         match self.inner.send(value) {
@@ -71,7 +72,6 @@ impl<T> ChannelSyncTx<T> {
 }
 
 impl<T> ChannelSyncTx<T> {
-    
     #[inline]
     pub fn send(&self, value: T) -> std::result::Result<(), SendError> {
         match self.inner.send(value) {
@@ -79,9 +79,13 @@ impl<T> ChannelSyncTx<T> {
             Err(_) => Err(SendError::FailedToSend),
         }
     }
-    
+
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> std::result::Result<(), TrySendError> {
+    pub fn send_timeout(
+        &self,
+        value: T,
+        timeout: Duration,
+    ) -> std::result::Result<(), TrySendError> {
         match self.inner.send_timeout(value, timeout) {
             Ok(_) => Ok(()),
             Err(err) => match err {
@@ -90,7 +94,7 @@ impl<T> ChannelSyncTx<T> {
             },
         }
     }
-    
+
     #[inline]
     pub fn try_send(&self, value: T) -> std::result::Result<(), TrySendError> {
         match self.inner.try_send(value) {
@@ -101,7 +105,6 @@ impl<T> ChannelSyncTx<T> {
             },
         }
     }
-    
 }
 
 impl<T> ChannelSyncRx<T> {

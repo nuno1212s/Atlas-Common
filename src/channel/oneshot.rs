@@ -1,4 +1,3 @@
-
 /*
  One shot channels
  @{

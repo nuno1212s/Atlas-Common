@@ -121,13 +121,12 @@ impl PrivateKeyPart {
 }
 
 impl PrivateKeySet {
-    
     /// Generate a new random private key set.
     /// Receives the threshold for the private key set.
     /// To combine signatures, we need at least `threshold` + 1 signatures.
     pub fn gen_random(threshold: usize) -> Self {
         let key = SecretKeySet::generate_random(threshold);
-        
+
         Self { key }
     }
 
@@ -139,7 +138,7 @@ impl PrivateKeySet {
 
     pub fn private_key_part(&self, index: usize) -> PrivateKeyPart {
         let key_share = self.key.get_key_share(index);
-        
+
         PrivateKeyPart { key: key_share }
     }
 }

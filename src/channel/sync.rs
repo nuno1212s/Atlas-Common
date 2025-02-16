@@ -1,6 +1,5 @@
-
-use crate::channel::{TryRecvError, TrySendReturnError};
 use crate::channel::{SendReturnError, TrySendError};
+use crate::channel::{TryRecvError, TrySendReturnError};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -72,7 +71,7 @@ impl<T> ChannelSyncTx<T> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    
+
     #[inline]
     pub fn send(&self, value: T) -> crate::error::Result<()> {
         Ok(self.inner.send(value)?)
@@ -89,9 +88,8 @@ impl<T> ChannelSyncTx<T> {
     }
 }
 
-#[cfg(not(feature  = "channel_sync_kanal"))]
+#[cfg(not(feature = "channel_sync_kanal"))]
 impl<T> ChannelSyncTx<T> {
-
     #[inline]
     pub fn send_return(&self, value: T) -> Result<(), SendReturnError<T>> {
         let value = match self.inner.try_send_return(value) {
@@ -127,13 +125,14 @@ impl<T> ChannelSyncTx<T> {
 }
 
 #[cfg(feature = "channel_sync_kanal")]
-impl<T> ChannelSyncTx<T> where T: Clone {
-
+impl<T> ChannelSyncTx<T>
+where
+    T: Clone,
+{
     #[inline]
     pub fn try_send_return(&self, value: T) -> Result<(), TrySendReturnError<T>> {
         self.inner.try_send_return(value)
     }
-
 }
 
 impl<T> Clone for ChannelSyncTx<T> {
@@ -181,10 +180,7 @@ pub fn new_bounded_sync<T>(
             channel_identifier: name.clone(),
             inner: tx,
         },
-        ChannelSyncRx {
-            name,
-            inner: rx,
-        },
+        ChannelSyncRx { name, inner: rx },
     )
 }
 
@@ -214,10 +210,7 @@ pub fn new_unbounded_sync<T>(
             channel_identifier: name.clone(),
             inner: tx,
         },
-        ChannelSyncRx {
-            name,
-            inner: rx,
-        },
+        ChannelSyncRx { name, inner: rx },
     )
 }
 
@@ -254,7 +247,6 @@ macro_rules! unwrap_channel {
 
 #[macro_export]
 macro_rules! exhaust_and_consume {
-
     ($channel:expr, $self_obj:expr, $consumption:ident) => {
         while let Ok(message) = $channel.try_recv() {
             $self_obj.$consumption(message)?;
@@ -265,17 +257,15 @@ macro_rules! exhaust_and_consume {
             $self_obj.$consumption(message)?;
         }
     };
-    ($existing_msg: expr, $channel: expr, $self_obj: expr, $consumption: ident) => {
-        {
-            $self_obj.$consumption($existing_msg)?;
+    ($existing_msg: expr, $channel: expr, $self_obj: expr, $consumption: ident) => {{
+        $self_obj.$consumption($existing_msg)?;
 
-            while let Ok(message) = $channel.try_recv() {
-                $self_obj.$consumption(message)?;
-            }
-
-            Ok(())
+        while let Ok(message) = $channel.try_recv() {
+            $self_obj.$consumption(message)?;
         }
-    };
+
+        Ok(())
+    }};
 }
 
 #[cfg(feature = "channel_sync_crossbeam")]

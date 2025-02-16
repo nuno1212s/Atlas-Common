@@ -83,12 +83,8 @@ impl<T> ChannelMixedTx<T> {
         match self.inner.send_timeout(message, timeout) {
             Ok(_) => Ok(()),
             Err(err) => match err {
-                SendTimeoutError::Timeout(e) => {
-                    Err(TrySendReturnError::Timeout(e))
-                }
-                SendTimeoutError::Disconnected(e) => {
-                    Err(TrySendReturnError::Disconnected(e))
-                }
+                SendTimeoutError::Timeout(e) => Err(TrySendReturnError::Timeout(e)),
+                SendTimeoutError::Disconnected(e) => Err(TrySendReturnError::Disconnected(e)),
             },
         }
     }
@@ -101,7 +97,6 @@ impl<T> ChannelMixedTx<T> {
     ) -> std::result::Result<(), TrySendReturnError<T>> {
         self.send_timeout_sync(message, timeout)
     }
-    
 }
 
 impl<T> ChannelMixedRx<T> {

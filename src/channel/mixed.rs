@@ -1,15 +1,14 @@
+use crate::channel::{RecvError, SendError, SendReturnError, TrySendReturnError};
+use crate::Err;
 use std::sync::Arc;
 use std::time::Duration;
-use crate::channel::{SendError, SendReturnError, RecvError, TrySendReturnError};
-use crate::Err;
 
 #[allow(dead_code)]
 
 /**
 Async and sync mixed channels (Allows us to connect async and sync environments together)
  */
-
-use super::r#async::{ChannelTxFut, ChannelRxFut};
+use super::r#async::{ChannelRxFut, ChannelTxFut};
 
 #[cfg(feature = "channel_mixed_flume")]
 type InnerChannelMixedRx<T> = super::flume_mpmc::ChannelMixedRx<T>;
@@ -25,12 +24,12 @@ type InnerChannelMixedRx<T> = super::kanal::r#async::ChannelMixedRx<T>;
 
 pub struct ChannelMixedRx<T> {
     channel_identifier: Option<Arc<str>>,
-    inner: InnerChannelMixedRx<T>
+    inner: InnerChannelMixedRx<T>,
 }
 
 pub struct ChannelMixedTx<T> {
     channel_identifier: Option<Arc<str>>,
-    inner: InnerChannelMixedTx<T>
+    inner: InnerChannelMixedTx<T>,
 }
 
 impl<T> ChannelMixedRx<T> {
@@ -75,8 +74,10 @@ impl<T> ChannelMixedRx<T> {
     }
 }
 
-impl<T> ChannelMixedTx<T> 
-where T: 'static {
+impl<T> ChannelMixedTx<T>
+where
+    T: 'static,
+{
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
@@ -108,7 +109,7 @@ where T: 'static {
     pub fn send_return(&self, value: T) -> Result<(), SendReturnError<T>> {
         self.inner.send_sync_return(value)
     }
-    
+
     pub fn send_timeout(&self, value: T, timeout: Duration) -> crate::error::Result<()> {
         Ok(self.inner.send_timeout_sync(value, timeout)?)
     }

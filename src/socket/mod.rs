@@ -823,23 +823,22 @@ fn set_listener_options(listener: AsyncListener) -> Result<AsyncListener> {
 
     // Prevent the socket from being closed when `sock` is dropped
     std::mem::forget(sock);
-    
+
     Ok(listener)
 }
 
 // set listener socket options; translated from BFT-SMaRt
 #[inline]
 fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> {
-
     let raw_fd = listener.inner.as_raw_fd();
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };
-    
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_reuse_address(true)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
-    
+
     std::mem::forget(sock);
 
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
@@ -850,36 +849,34 @@ fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> 
 // set connection socket options; translated from BFT-SMaRt
 #[inline]
 fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket> {
-    
     let raw_fd = connection.inner.as_raw_fd();
-    
+
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };
-    
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
-    
+
     std::mem::forget(sock);
-    
+
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
     Ok(connection)
 }
 
 #[inline]
 fn set_sockstream_options_sync(connection: SyncSocket) -> Result<SyncSocket> {
-    
     let raw_fd = connection.inner.as_raw_fd();
-    
+
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };
-    
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
-    
+
     std::mem::forget(sock);
-    
+
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
     Ok(connection)
 }

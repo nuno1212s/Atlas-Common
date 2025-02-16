@@ -70,6 +70,7 @@ impl PublicKeyPart {
 }
 
 impl SecretKeySet {
+    
     pub fn generate_random(n: usize) -> SecretKeySet {
         let mut rand = rand::rngs::OsRng;
 

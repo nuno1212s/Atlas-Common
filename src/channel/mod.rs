@@ -4,9 +4,6 @@ use std::fmt::{Debug, Formatter};
 
 use thiserror::Error;
 
-#[cfg(feature = "channel_futures_mpsc")]
-mod futures_mpsc;
-
 #[cfg(feature = "channel_flume_mpmc")]
 mod flume_mpmc;
 
@@ -19,16 +16,20 @@ mod custom_dump;
 #[cfg(feature = "channel_sync_crossbeam")]
 mod crossbeam;
 
-#[cfg(any(feature = "channel_sync_kanal", feature = "channel_mixed_kanal", feature = "channel_async_kanal"))]
+#[cfg(any(
+    feature = "channel_sync_kanal",
+    feature = "channel_mixed_kanal",
+    feature = "channel_async_kanal"
+))]
 mod kanal;
 
 mod oneshot_spsc;
 
-pub mod sync;
 pub mod r#async;
 pub mod mixed;
-pub mod oneshot;
 pub mod mult;
+pub mod oneshot;
+pub mod sync;
 
 /**
 Errors

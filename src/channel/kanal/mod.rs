@@ -50,7 +50,9 @@ impl<T> ChannelSyncTx<T> {
             Ok(_) => Ok(()),
             Err(err) => match err {
                 SendErrorTimeout::Timeout => Err(super::TrySendError::Timeout),
-                SendErrorTimeout::Closed | SendErrorTimeout::ReceiveClosed => Err(super::TrySendError::Disconnected),
+                SendErrorTimeout::Closed | SendErrorTimeout::ReceiveClosed => {
+                    Err(super::TrySendError::Disconnected)
+                }
             },
         }
     }
@@ -73,9 +75,12 @@ impl<T> ChannelSyncTx<T>
 where
     T: Clone,
 {
-    pub fn try_send_return(&self, value: T) -> std::result::Result<(), super::TrySendReturnError<T>> {
+    pub fn try_send_return(
+        &self,
+        value: T,
+    ) -> std::result::Result<(), super::TrySendReturnError<T>> {
         let value_clone = value.clone();
-        
+
         match self.inner.try_send(value) {
             Ok(true) => Ok(()),
             Ok(false) => Err(super::TrySendReturnError::Full(value_clone)),
@@ -86,7 +91,6 @@ where
             },
         }
     }
-    
 }
 
 impl<T> ChannelSyncRx<T> {
