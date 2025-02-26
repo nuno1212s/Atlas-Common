@@ -247,6 +247,15 @@ macro_rules! unwrap_channel {
 
 #[macro_export]
 macro_rules! exhaust_and_consume {
+    ($existing_msg: expr, $channel: expr, $self_obj: expr, $consumption: ident) => {{
+        $self_obj.$consumption($existing_msg)?;
+
+        while let Ok(message) = $channel.try_recv() {
+            $self_obj.$consumption(message)?;
+        }
+
+        Ok(())
+    }};
     ($channel:expr, $self_obj:expr, $consumption:ident) => {
         while let Ok(message) = $channel.try_recv() {
             $self_obj.$consumption(message)?;
@@ -257,15 +266,6 @@ macro_rules! exhaust_and_consume {
             $self_obj.$consumption(message)?;
         }
     };
-    ($existing_msg: expr, $channel: expr, $self_obj: expr, $consumption: ident) => {{
-        $self_obj.$consumption($existing_msg)?;
-
-        while let Ok(message) = $channel.try_recv() {
-            $self_obj.$consumption(message)?;
-        }
-
-        Ok(())
-    }};
 }
 
 #[cfg(feature = "channel_sync_crossbeam")]
