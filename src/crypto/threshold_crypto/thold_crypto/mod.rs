@@ -1,10 +1,12 @@
+use crate::crypto::threshold_crypto::{
+    CombineSignatureError, ParsePublicKeyError, VerifySignatureError,
+};
 use anyhow::anyhow;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
+use threshold_crypto::error::{Error, FromBytesError};
 use threshold_crypto::poly::Commitment;
 use threshold_crypto::{Fr, IntoFr};
-
-use crate::error::*;
 
 pub mod dkg;
 //mod async_dkg;
@@ -12,45 +14,40 @@ pub mod dkg;
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PublicKey {
+pub(super) struct PublicKey {
     key: threshold_crypto::PublicKey,
-}
-
-#[derive(Clone, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct PrivateKey {
-    key: threshold_crypto::SecretKey,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PublicKeyPart {
+pub(super) struct PublicKeyPart {
     key: threshold_crypto::PublicKeyShare,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct PrivateKeyPart {
+pub(super) struct PrivateKeyPart {
     key: threshold_crypto::SecretKeyShare,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PartialSignature {
+pub(super) struct PartialSignature {
     sig: threshold_crypto::SignatureShare,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct Signature {
+pub(super) struct Signature {
     sig: threshold_crypto::Signature,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct SecretKeySet {
+pub(super) struct SecretKeySet {
     sk_set: threshold_crypto::SecretKeySet,
 }
 
@@ -58,33 +55,34 @@ pub struct SecretKeySet {
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
-pub struct PublicKeySet {
+pub(super) struct PublicKeySet {
     pk_set: threshold_crypto::PublicKeySet,
 }
 
 impl PublicKeyPart {
-    pub fn verify(&self, msg: &[u8], sig: &PartialSignature) -> Result<()> {
+    pub fn verify(&self, msg: &[u8], sig: &PartialSignature) -> Result<(), VerifySignatureError> {
         if self.key.verify(&sig.sig, msg) {
             Ok(())
         } else {
-            Err(anyhow!("Partial signature verification failed"))
+            Err(VerifySignatureError::WrongSignature)
         }
     }
 }
 
 impl SecretKeySet {
-    pub fn generate_random(n: usize) -> Result<SecretKeySet> {
+    
+    pub fn generate_random(n: usize) -> SecretKeySet {
         let mut rand = rand::rngs::OsRng;
 
         let sk_set = threshold_crypto::SecretKeySet::random(n, &mut rand);
 
-        Ok(SecretKeySet { sk_set })
+        SecretKeySet { sk_set }
     }
 
-    pub fn get_key_share(&self, i: usize) -> Result<PrivateKeyPart> {
+    pub fn get_key_share(&self, i: usize) -> PrivateKeyPart {
         let key = self.sk_set.secret_key_share(i);
 
-        Ok(PrivateKeyPart { key })
+        PrivateKeyPart { key }
     }
 
     pub fn public_key_set(&self) -> PublicKeySet {
@@ -101,10 +99,10 @@ impl PrivateKeyPart {
         }
     }
 
-    pub fn partially_sign(&self, msg: &[u8]) -> Result<PartialSignature> {
+    pub fn partially_sign(&self, msg: &[u8]) -> PartialSignature {
         let sig = self.key.sign(msg);
 
-        Ok(PartialSignature { sig })
+        PartialSignature { sig }
     }
 
     pub fn from_mut(sk: &mut Fr) -> Self {
@@ -126,10 +124,14 @@ impl PublicKey {
     }
 
     #[inline]
-    pub fn from_bytes(bytes: &[u8; threshold_crypto::PK_SIZE]) -> Result<PublicKey> {
-        let key = threshold_crypto::PublicKey::from_bytes(bytes)?;
-
-        Ok(PublicKey { key })
+    pub fn from_bytes(
+        bytes: &[u8; threshold_crypto::PK_SIZE],
+    ) -> Result<PublicKey, ParsePublicKeyError> {
+        threshold_crypto::PublicKey::from_bytes(bytes)
+            .map(|key| PublicKey { key })
+            .map_err(|err| match err {
+                FromBytesError::Invalid => ParsePublicKeyError::InvalidPublicKey,
+            })
     }
 }
 
@@ -142,10 +144,10 @@ impl PublicKeySet {
     }
 
     #[inline(always)]
-    pub fn get_public_key_part(&self, i: usize) -> Result<PublicKeyPart> {
+    pub fn get_public_key_part(&self, i: usize) -> PublicKeyPart {
         let key = self.pk_set.public_key_share(i);
 
-        Ok(PublicKeyPart { key })
+        PublicKeyPart { key }
     }
 
     #[inline(always)]
@@ -154,12 +156,12 @@ impl PublicKeySet {
         index: usize,
         msg: &[u8],
         sig: &PartialSignature,
-    ) -> Result<()> {
-        self.get_public_key_part(index)?.verify(msg, sig)
+    ) -> Result<(), VerifySignatureError> {
+        self.get_public_key_part(index).verify(msg, sig)
     }
 
     #[inline(always)]
-    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature>
+    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature, CombineSignatureError>
     where
         I: IntoIterator<Item = (T, &'a PartialSignature)>,
         T: IntoFr,
@@ -169,17 +171,28 @@ impl PublicKeySet {
             .map(|(index, sign)| (index, &sign.sig))
             .collect::<Vec<_>>();
 
-        let sig = self.pk_set.combine_signatures(sigs)?;
+        let sig = self
+            .pk_set
+            .combine_signatures(sigs)
+            .map_err(|err| match err {
+                Error::NotEnoughShares => CombineSignatureError::NotEnoughShares,
+                Error::DuplicateEntry => CombineSignatureError::DuplicateEntry,
+                Error::DegreeTooHigh => CombineSignatureError::DegreeTooHigh,
+            })?;
 
         Ok(Signature { sig })
     }
 
     #[inline(always)]
-    pub fn verify_combined_signature(&self, msg: &[u8], sig: &Signature) -> Result<()> {
+    pub fn verify_combined_signature(
+        &self,
+        msg: &[u8],
+        sig: &Signature,
+    ) -> Result<(), VerifySignatureError> {
         if self.public_key().verify_combined_signatures(sig, msg) {
             Ok(())
         } else {
-            Err(anyhow!("Signature verification failed"))
+            Err(VerifySignatureError::WrongSignature)
         }
     }
 }

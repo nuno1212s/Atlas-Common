@@ -94,6 +94,14 @@ impl ThreadPool {
         self.inner.execute(job)
     }
 
+    pub fn install<F, R>(&self, job: F) -> R
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send,
+    {
+        self.inner.install(job)
+    }
+
     /// Synchronously waits for all the jobs queued in the pool
     /// to complete.
     pub fn join(&self) {

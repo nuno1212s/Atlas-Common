@@ -7,10 +7,10 @@ use serde_big_array::BigArray;
 use crate::crypto::signature::{SignError, VerifyError};
 use crate::Err;
 
+use crate::error::*;
+use ring::rand::SystemRandom;
 use ring::signature::Ed25519KeyPair;
 use ring::{signature as rsig, signature::KeyPair as RKeyPair, signature::ED25519_PUBLIC_KEY_LEN};
-
-use crate::error::*;
 
 pub struct KeyPair {
     sk: rsig::Ed25519KeyPair,
@@ -32,11 +32,19 @@ pub struct Signature(
 );
 
 impl KeyPair {
+    pub fn generate() -> Result<(Self, Vec<u8>)> {
+        let mut random = SystemRandom::new();
+        let sk = rsig::Ed25519KeyPair::generate_pkcs8(&mut random)
+            .map_err(|e| SignError::GenerateKey(format!("{:?}", e)))?;
+
+        Self::from_pkcs8(sk.as_ref())
+    }
+
     pub fn from_pkcs8(priv_key: &[u8]) -> Result<(Self, Vec<u8>)> {
-        let sk = match Ed25519KeyPair::from_pkcs8(priv_key) {
+        let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(priv_key) {
             Ok(sk) => sk,
             Err(err) => {
-                return Err!(SignError::InvalidPK(format!("{}", err)));
+                return Err!(SignError::InvalidPK(format!("{:?}", err)));
             }
         };
 
@@ -76,6 +84,21 @@ impl KeyPair {
 }
 
 impl PublicKey {
+    #[allow(dead_code)]
+    pub fn from_pkcs8(raw_bytes: &[u8]) -> Result<Self> {
+        let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(raw_bytes) {
+            Ok(sk) => sk,
+            Err(err) => {
+                return Err!(SignError::InvalidPK(format!("{:?}", err)));
+            }
+        };
+
+        let pk = *sk.public_key();
+        let pk_bytes = pk.as_ref();
+
+        Ok(Self::from_bytes_unchecked(pk_bytes))
+    }
+
     pub fn from_bytes(raw_bytes: &[u8]) -> Result<Self> {
         if raw_bytes.len() < ED25519_PUBLIC_KEY_LEN {
             return Err!(SignError::PublicKeyLen(raw_bytes.len()));

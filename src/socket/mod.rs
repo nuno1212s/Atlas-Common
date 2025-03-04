@@ -5,6 +5,7 @@ use std::io;
 use std::io::{ErrorKind, Read, Write};
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
+use std::os::fd::{AsRawFd, FromRawFd};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context as Cntx, Poll};
@@ -18,6 +19,7 @@ use mio::{Interest, Registry, Token};
 use tracing::error;
 
 use rustls::{ClientConnection, ServerConnection};
+use socket2::{SockRef, Socket};
 use tokio_rustls::TlsStream;
 use tokio_util::compat::{
     Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
@@ -810,26 +812,35 @@ impl AsyncWrite for SecureSocketAsync {
 // set listener socket options; translated from BFT-SMaRt
 #[inline]
 fn set_listener_options(listener: AsyncListener) -> Result<AsyncListener> {
-    let sock = socket2::SockRef::from(&listener.inner);
+    let raw_fd = listener.inner.as_raw_fd();
+    let sock = unsafe { Socket::from_raw_fd(raw_fd) };
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_reuse_address(true)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
-    // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
-    // ChannelOption.SO_BACKLOG ??
+
+    // Prevent the socket from being closed when `sock` is dropped
+    std::mem::forget(sock);
+
     Ok(listener)
 }
 
 // set listener socket options; translated from BFT-SMaRt
 #[inline]
 fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> {
-    let sock = socket2::SockRef::from(&listener.inner);
+    let raw_fd = listener.inner.as_raw_fd();
+    let sock = unsafe { Socket::from_raw_fd(raw_fd) };
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_reuse_address(true)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
+
+    std::mem::forget(sock);
+
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
     // ChannelOption.SO_BACKLOG ??
     Ok(listener)
@@ -838,22 +849,34 @@ fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> 
 // set connection socket options; translated from BFT-SMaRt
 #[inline]
 fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket> {
-    let sock = socket2::SockRef::from(&connection.inner);
+    let raw_fd = connection.inner.as_raw_fd();
+
+    let sock = unsafe { Socket::from_raw_fd(raw_fd) };
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
+
+    std::mem::forget(sock);
+
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
     Ok(connection)
 }
 
 #[inline]
 fn set_sockstream_options_sync(connection: SyncSocket) -> Result<SyncSocket> {
-    let sock = socket2::SockRef::from(&connection.inner);
+    let raw_fd = connection.inner.as_raw_fd();
+
+    let sock = unsafe { Socket::from_raw_fd(raw_fd) };
+
     sock.set_send_buffer_size(WRITE_BUFFER_SIZE)?;
     sock.set_recv_buffer_size(READ_BUFFER_SIZE)?;
     sock.set_keepalive(true)?;
     sock.set_nodelay(true)?;
+
+    std::mem::forget(sock);
+
     // ChannelOption.CONNECT_TIMEOUT_MILLIS ??
     Ok(connection)
 }

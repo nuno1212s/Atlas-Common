@@ -1,5 +1,6 @@
 use std::path::Path;
-
+#[cfg(feature = "persistent_db_rocksdb")]
+use std::sync::Arc;
 use thiserror::Error;
 
 use crate::error::*;

@@ -87,6 +87,10 @@ impl<T: Sync + 'static> Global<T> {
     }
 }
 
+/// A wrapper for non sync types to become Sync,
+/// By only providing a read access to it.
+/// If <T> is !Sync, then this is unsafe and can lead
+/// to unpredicted behaviour
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 #[derive(Debug)]
 pub struct ReadOnly<T> {

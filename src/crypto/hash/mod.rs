@@ -130,6 +130,12 @@ impl Debug for Digest {
     }
 }
 
+impl Default for Digest {
+    fn default() -> Self {
+        Self::blank()
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum HashError {
     #[error("Hash has an invalid length {0}")]

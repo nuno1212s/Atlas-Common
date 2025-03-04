@@ -12,6 +12,14 @@ impl ThreadPool {
         self.inner.spawn(job)
     }
 
+    pub fn install<F, R>(&self, job: F) -> R
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send,
+    {
+        self.inner.install(job)
+    }
+
     pub fn join(&self) {
         // no-op
     }

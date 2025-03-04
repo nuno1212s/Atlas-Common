@@ -1,9 +1,10 @@
 pub mod thold_crypto;
 //mod frost;
 
-use crate::error::*;
+use crate::crypto::threshold_crypto::thold_crypto::SecretKeySet;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use threshold_crypto::{Fr, IntoFr};
 
 #[derive(Clone, Eq, PartialEq)]
@@ -35,18 +36,18 @@ pub struct PublicKey {
 
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct PrivateKey {
-    key: thold_crypto::PrivateKey,
+pub struct PrivateKeySet {
+    key: thold_crypto::SecretKeySet,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PartialSignature {
     sig: thold_crypto::PartialSignature,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct CombinedSignature {
@@ -62,19 +63,22 @@ impl PublicKeySet {
         }
     }
 
-    pub fn public_key_share(&self, index: usize) -> Result<PublicKeyPart> {
-        Ok(PublicKeyPart {
-            key: self.key.get_public_key_part(index)?,
-        })
+    pub fn public_key_share(&self, index: usize) -> PublicKeyPart {
+        PublicKeyPart {
+            key: self.key.get_public_key_part(index),
+        }
     }
 
-    pub fn verify(&self, msg: &[u8], sig: &CombinedSignature) -> Result<()> {
+    pub fn verify(&self, msg: &[u8], sig: &CombinedSignature) -> Result<(), VerifySignatureError> {
         self.key.verify_combined_signature(msg, &sig.sig)?;
 
         Ok(())
     }
 
-    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<CombinedSignature>
+    pub fn combine_signatures<'a, T, I>(
+        &self,
+        sigs: I,
+    ) -> Result<CombinedSignature, CombineSignatureError>
     where
         I: IntoIterator<Item = (T, &'a PartialSignature)>,
         T: IntoFr,
@@ -91,7 +95,7 @@ impl PublicKeySet {
 }
 
 impl PublicKeyPart {
-    pub fn verify(&self, msg: &[u8], sig: &PartialSignature) -> Result<()> {
+    pub fn verify(&self, msg: &[u8], sig: &PartialSignature) -> Result<(), VerifySignatureError> {
         self.key.verify(msg, &sig.sig)
     }
 }
@@ -103,10 +107,10 @@ impl PrivateKeyPart {
         }
     }
 
-    pub fn partially_sign(&self, msg: &[u8]) -> Result<PartialSignature> {
-        Ok(PartialSignature {
-            sig: self.key.partially_sign(msg)?,
-        })
+    pub fn partially_sign(&self, msg: &[u8]) -> PartialSignature {
+        PartialSignature {
+            sig: self.key.partially_sign(msg),
+        }
     }
 
     pub fn from_mut(sk: &mut Fr) -> Self {
@@ -114,4 +118,52 @@ impl PrivateKeyPart {
             key: thold_crypto::PrivateKeyPart::from_mut(sk),
         }
     }
+}
+
+impl PrivateKeySet {
+    /// Generate a new random private key set.
+    /// Receives the threshold for the private key set.
+    /// To combine signatures, we need at least `threshold` + 1 signatures.
+    pub fn gen_random(threshold: usize) -> Self {
+        let key = SecretKeySet::generate_random(threshold);
+
+        Self { key }
+    }
+
+    pub fn public_key_set(&self) -> PublicKeySet {
+        PublicKeySet {
+            key: self.key.public_key_set(),
+        }
+    }
+
+    pub fn private_key_part(&self, index: usize) -> PrivateKeyPart {
+        let key_share = self.key.get_key_share(index);
+
+        PrivateKeyPart { key: key_share }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum VerifySignatureError {
+    #[error("The signature is not valid for this message")]
+    WrongSignature,
+}
+
+#[derive(Error, Debug)]
+pub enum CombineSignatureError {
+    /// Not enough signature shares.
+    #[error("Not enough signature shares")]
+    NotEnoughShares,
+    /// Signature shares contain a duplicated index.
+    #[error("Signature shares contain a duplicated index")]
+    DuplicateEntry,
+    /// The degree is too high for the coefficients to be indexed by `usize`.
+    #[error("The degree is too high for the coefficients to be indexed by usize.")]
+    DegreeTooHigh,
+}
+
+#[derive(Error, Debug)]
+pub enum ParsePublicKeyError {
+    #[error("The public key is not valid")]
+    InvalidPublicKey,
 }
