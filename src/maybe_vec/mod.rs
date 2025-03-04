@@ -215,3 +215,12 @@ impl<T> FromIterator<T> for MaybeVec<T> {
         maybe_vec.build()
     }
 }
+
+impl<T> From<Option<T>> for MaybeVec<T> {
+    fn from(option: Option<T>) -> Self {
+        match option {
+            Some(value) => MaybeVec::One(value),
+            None => MaybeVec::None,
+        }
+    }
+}
