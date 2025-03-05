@@ -6,7 +6,8 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use threshold_crypto::error::{Error, FromBytesError};
 use threshold_crypto::poly::Commitment;
-use threshold_crypto::{Fr, IntoFr};
+use threshold_crypto::{Fr, IntoFr, SecretKeyShare};
+use threshold_crypto::serde_impl::SerdeSecret;
 
 pub mod dkg;
 //mod async_dkg;
@@ -28,7 +29,14 @@ pub(super) struct PublicKeyPart {
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub(super) struct PrivateKeyPart {
-    key: threshold_crypto::SecretKeyShare,
+    key: SecretKeyShare,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[repr(transparent)]
+#[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
+pub(super) struct SerializableKeyPart {
+    key: SerdeSecret<SecretKeyShare>
 }
 
 #[derive(Clone, Eq, PartialEq, Hash)]
@@ -214,5 +222,21 @@ impl From<PublicKeySet> for super::PublicKeySet {
 impl From<PrivateKeyPart> for super::PrivateKeyPart {
     fn from(value: PrivateKeyPart) -> Self {
         super::PrivateKeyPart { key: value }
+    }
+}
+
+impl From<PrivateKeyPart> for SerializableKeyPart {
+    fn from(value: PrivateKeyPart) -> Self {
+        SerializableKeyPart {
+            key: SerdeSecret(value.key),
+        }
+    }
+}
+
+impl From<SerializableKeyPart> for PrivateKeyPart {
+    fn from(value: SerializableKeyPart) -> Self {
+        PrivateKeyPart {
+            key: value.key.0,
+        }
     }
 }

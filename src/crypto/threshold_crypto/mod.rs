@@ -23,6 +23,13 @@ pub struct PrivateKeyPart {
 #[derive(Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
+pub struct SerializableKeyPart {
+    key: thold_crypto::SerializableKeyPart,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+#[repr(transparent)]
+#[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PublicKeySet {
     key: thold_crypto::PublicKeySet,
 }
@@ -166,4 +173,20 @@ pub enum CombineSignatureError {
 pub enum ParsePublicKeyError {
     #[error("The public key is not valid")]
     InvalidPublicKey,
+}
+
+impl From<PrivateKeyPart> for SerializableKeyPart {
+    fn from(pk: PrivateKeyPart) -> SerializableKeyPart {
+        SerializableKeyPart {
+            key: pk.key.into(),
+        }
+    }
+}
+
+impl From<SerializableKeyPart> for PrivateKeyPart {
+    fn from(pk: SerializableKeyPart) -> PrivateKeyPart {
+        PrivateKeyPart {
+            key: pk.key.into(),
+        }
+    }
 }
