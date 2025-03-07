@@ -83,7 +83,7 @@ persistent_db_disabled = []
 serialize_serde = ["serde", "serde-big-array"]
 
 [dependencies]
-either = "1.8.1"
+either = "1"
 tokio-rustls = "0.26"
 rustls = "0.23"
 futures = "0.3.26"
@@ -103,7 +103,7 @@ threadpool-crossbeam-channel = { version = "1.8.0", optional = true }
 
 serde = { version = "*", features = ["derive", "rc"], optional = true }
 serde-big-array = { version = "0.5.0", optional = true }
-bincode = { version = "2.0.0-rc.3", features = ["default", "serde"] }
+bincode = { version = "2", features = ["default", "serde"] }
 tracing = "0"
 
 rayon = { version = "1.5.3", optional = true }
