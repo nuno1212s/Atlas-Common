@@ -480,16 +480,16 @@ pub mod dkg_test {
 
     #[test]
     fn test_central_dist() {
-        let sec_key_set = SecretKeySet::generate_random(DEALERS).unwrap();
+        let sec_key_set = SecretKeySet::generate_random(DEALERS);
 
         let pk_set = sec_key_set.public_key_set();
 
         for node in 1..=DEALERS {
-            let pk_part = sec_key_set.get_key_share(node).unwrap();
+            let pk_part = sec_key_set.get_key_share(node);
 
             assert_eq!(
                 pk_part.public_key_part(),
-                pk_set.get_public_key_part(node).unwrap()
+                pk_set.get_public_key_part(node)
             );
         }
     }
@@ -502,9 +502,9 @@ pub mod dkg_test {
         let mut sigs = vec![];
 
         for (node, (pk, sk)) in node_keys.iter().enumerate() {
-            let signature = sk.partially_sign(DATA_TO_SIGN).unwrap();
+            let signature = sk.partially_sign(DATA_TO_SIGN);
 
-            assert_eq!(pk.get_public_key_part(node).unwrap(), sk.public_key_part());
+            assert_eq!(pk.get_public_key_part(node), sk.public_key_part());
 
             pk.verify_partial_signature(node, DATA_TO_SIGN, &signature)
                 .unwrap();
@@ -535,7 +535,7 @@ pub mod dkg_test {
         let (mut pks, mut sks, mut rxs) = (vec![], vec![], vec![]);
 
         for (node, (pk, sk, rx, _)) in results.into_iter().enumerate() {
-            assert_eq!(sk.public_key_part(), pk.get_public_key_part(node).unwrap());
+            assert_eq!(sk.public_key_part(), pk.get_public_key_part(node));
 
             pks.push(pk);
             sks.push(sk);

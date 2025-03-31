@@ -1,9 +1,9 @@
 //! Public key cryptographic operations.
 
+#[cfg(feature = "serialize_serde")]
 use serde::de::{Error, SeqAccess};
 #[cfg(feature = "serialize_serde")]
-use serde::{Deserialize, Serialize};
-use serde::{Deserializer, Serializer};
+use serde::{Deserialize, Serialize, Deserializer, Serializer};
 use std::cmp;
 use std::fmt::{Debug, Formatter};
 use thiserror::Error;

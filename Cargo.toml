@@ -25,7 +25,8 @@ default = [
     "crypto_signature_ring_ed25519",
     "crypto_hash_blake3_blake3",
     "collections_randomstate_fxhash",
-    "persistent_db_rocksdb"
+    "persistent_db_rocksdb",
+    "serialize_serde"
 ]
 
 #Async socket alternatives, choose one
@@ -106,7 +107,7 @@ serde-big-array = { version = "0.5.0", optional = true }
 bincode = { version = "2", features = ["default", "serde"] }
 tracing = "0"
 
-rayon = { version = "1.5.3", optional = true }
+rayon = { version = "*", optional = true }
 rio = { version = "0.9", optional = true }
 blake3 = { version = "1", optional = true }
 flume = { version = "0", optional = true }
@@ -123,6 +124,15 @@ getset = "0"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
 threshold_crypto = { version = "0.4.0", git = "https://github.com/poanetwork/threshold_crypto" }
+# This is here because of the threshold crypto requirements, which require us to use this version of rand
 rand = "0.7.3"
 frost-ed25519 = { version = "2.0.0", features = ["serde"] }
 frost-core = { version = "2.0.0", features = ["serde"] }
+
+
+[dev-dependencies]
+criterion = "*"
+
+[[bench]]
+name = "threshold_crypto_bench"
+harness = false

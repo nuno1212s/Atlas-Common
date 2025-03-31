@@ -2,10 +2,6 @@
 
 #[cfg(feature = "threadpool_crossbeam")]
 mod crossbeam;
-
-#[cfg(feature = "threadpool_cthpool")]
-mod cthpool;
-
 #[cfg(feature = "threadpool_rayon")]
 mod rayon;
 
@@ -22,10 +18,6 @@ use crate::globals::Global;
 pub struct ThreadPool {
     #[cfg(feature = "threadpool_crossbeam")]
     inner: crossbeam::ThreadPool,
-
-    #[cfg(feature = "threadpool_cthpool")]
-    inner: cthpool::ThreadPool,
-
     #[cfg(feature = "threadpool_rayon")]
     inner: rayon::ThreadPool,
 }
@@ -34,10 +26,6 @@ pub struct ThreadPool {
 pub struct Builder {
     #[cfg(feature = "threadpool_crossbeam")]
     inner: crossbeam::Builder,
-
-    #[cfg(feature = "threadpool_cthpool")]
-    inner: cthpool::Builder,
-
     #[cfg(feature = "threadpool_rayon")]
     inner: rayon::Builder,
 }
@@ -55,11 +43,6 @@ impl Builder {
             #[cfg(feature = "threadpool_crossbeam")]
             {
                 crossbeam::Builder::new()
-            }
-
-            #[cfg(feature = "threadpool_cthpool")]
-            {
-                cthpool::Builder::new()
             }
 
             #[cfg(feature = "threadpool_rayon")]
