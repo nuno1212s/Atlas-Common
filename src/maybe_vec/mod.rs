@@ -17,24 +17,32 @@ pub enum MaybeVec<T> {
     Mult(Vec<T>),
 }
 
+
 impl<T> MaybeVec<T> {
-    pub fn from_one(member: T) -> Self {
+    #[must_use] pub fn from_one(member: T) -> Self {
         Self::One(member)
     }
+    
+    #[must_use] pub fn from_option(option: Option<T>) -> Self {
+        match option {
+            Some(value) => Self::One(value),
+            None => Self::None,
+        }
+    }
 
-    pub fn from_many(objects: Vec<T>) -> Self {
+    #[must_use] pub fn from_many(objects: Vec<T>) -> Self {
         Self::Mult(objects)
     }
 
-    pub fn builder() -> MaybeVecBuilder<T> {
+    #[must_use] pub fn builder() -> MaybeVecBuilder<T> {
         MaybeVecBuilder::empty()
     }
 
     pub fn len(&self) -> usize {
         match self {
+            MaybeVec::None => 0,
             MaybeVec::One(_) => 1,
             MaybeVec::Mult(vec) => vec.len(),
-            MaybeVec::None => 0,
         }
     }
 
@@ -73,6 +81,7 @@ impl<T> MaybeVec<T> {
     }
 
     /// Join two maybe vecs
+    #[must_use]
     pub fn joining(self, other: Self) -> Self {
         match self {
             MaybeVec::None => other,
@@ -102,10 +111,20 @@ impl<T> MaybeVec<T> {
     }
 }
 
-pub enum ItMaybeVec<T> {
-    None,
-    One(Once<T>),
-    Mult(std::vec::IntoIter<T>),
+impl<'a, T> IntoIterator for &'a MaybeVec<T> {
+    type Item = &'a T;
+    type IntoIter = ItRefMaybeVec<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut MaybeVec<T> {
+    type Item = &'a mut T;
+    type IntoIter = ItMutMaybeVec<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
 }
 
 impl<T> IntoIterator for MaybeVec<T> {
@@ -119,6 +138,31 @@ impl<T> IntoIterator for MaybeVec<T> {
             MaybeVec::None => ItMaybeVec::None,
         }
     }
+}
+
+impl<T> FromIterator<T> for MaybeVec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut maybe_vec = MaybeVec::builder();
+
+        iter.into_iter().for_each(|item| maybe_vec.push(item));
+
+        maybe_vec.build()
+    }
+}
+
+impl<T> From<Option<T>> for MaybeVec<T> {
+    fn from(option: Option<T>) -> Self {
+        match option {
+            Some(value) => MaybeVec::One(value),
+            None => MaybeVec::None,
+        }
+    }
+}
+
+pub enum ItMaybeVec<T> {
+    None,
+    One(Once<T>),
+    Mult(std::vec::IntoIter<T>),
 }
 
 impl<T> Iterator for ItMaybeVec<T> {
@@ -206,21 +250,3 @@ impl<T> MaybeVecBuilder<T> {
     }
 }
 
-impl<T> FromIterator<T> for MaybeVec<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut maybe_vec = MaybeVec::builder();
-
-        iter.into_iter().for_each(|item| maybe_vec.push(item));
-
-        maybe_vec.build()
-    }
-}
-
-impl<T> From<Option<T>> for MaybeVec<T> {
-    fn from(option: Option<T>) -> Self {
-        match option {
-            Some(value) => MaybeVec::One(value),
-            None => MaybeVec::None,
-        }
-    }
-}

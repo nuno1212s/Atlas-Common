@@ -14,10 +14,7 @@ use serde::{Deserialize, Serialize};
 pub trait SerMsg: NonSyncSerMsg + Sync {}
 
 #[cfg(feature = "serialize_capnp")]
-pub trait SerMessage: 'static + Send + Clone {}
-
-#[cfg(feature = "serialize_serde")]
-pub trait NonSyncSerMsg: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}
+pub trait SerMsg: 'static + Send + Clone {}
 
 /// Automatically implement the SerType trait for all types that implement the serde traits
 /// which, since we do not require any function impls, is the only thing we require
@@ -26,6 +23,9 @@ impl<T> SerMsg for T where T: NonSyncSerMsg + Sync {}
 
 #[cfg(feature = "serialize_capnp")]
 impl<T> SerMsg for T where T: NonSyncSerMsg + Sync {}
+
+#[cfg(feature = "serialize_serde")]
+pub trait NonSyncSerMsg: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}
 
 #[cfg(feature = "serialize_serde")]
 impl<T> NonSyncSerMsg for T where T: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}

@@ -11,21 +11,21 @@ pub enum MaybeOrderedVec<T> {
 }
 
 impl<T> MaybeOrderedVec<T> {
-    pub fn builder() -> MaybeOrderedVecBuilder<T> {
+    #[must_use] pub fn builder() -> MaybeOrderedVecBuilder<T> {
         MaybeOrderedVecBuilder {
             current_value: Self::None,
         }
     }
 
-    pub fn empty() -> Self {
+    #[must_use] pub fn empty() -> Self {
         Self::None
     }
 
-    pub fn from_one(member: T) -> Self {
+    #[must_use] pub fn from_one(member: T) -> Self {
         Self::One(member)
     }
 
-    pub fn from_many(objects: Vec<T>) -> Self
+    #[must_use] pub fn from_many(objects: Vec<T>) -> Self
     where
         T: Ord,
     {
@@ -38,7 +38,7 @@ impl<T> MaybeOrderedVec<T> {
         Self::Mult(result)
     }
 
-    pub fn from_set(set: BTreeSet<T>) -> Self {
+    #[must_use] pub fn from_set(set: BTreeSet<T>) -> Self {
         Self::Mult(set)
     }
 
@@ -58,60 +58,70 @@ impl<T> MaybeOrderedVec<T> {
         }
     }
 
-    pub fn iter(&self) -> ItRefMaybeVec<T> {
+    pub fn iter(&self) -> ItRefOrderedMaybeVec<T> {
         match self {
-            MaybeOrderedVec::One(one) => ItRefMaybeVec::One(iter::once(one)),
-            MaybeOrderedVec::Mult(vec) => ItRefMaybeVec::Mult(vec.iter()),
-            MaybeOrderedVec::None => ItRefMaybeVec::None,
+            MaybeOrderedVec::One(one) => ItRefOrderedMaybeVec::One(iter::once(one)),
+            MaybeOrderedVec::Mult(vec) => ItRefOrderedMaybeVec::Mult(vec.iter()),
+            MaybeOrderedVec::None => ItRefOrderedMaybeVec::None,
         }
     }
 }
 
-pub enum ItMaybeVec<T> {
-    None,
-    One(Once<T>),
-    Mult(IntoIter<T>),
-}
+impl<'a, T> IntoIterator for &'a MaybeOrderedVec<T> {
+    type Item = &'a T;
+    type IntoIter = ItRefOrderedMaybeVec<'a, T>;
 
-impl<T> Iterator for ItMaybeVec<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            ItMaybeVec::None => None,
-            ItMaybeVec::One(iter) => iter.next(),
-            ItMaybeVec::Mult(iter) => iter.next(),
-        }
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
 impl<T> IntoIterator for MaybeOrderedVec<T> {
     type Item = T;
-    type IntoIter = ItMaybeVec<T>;
+    type IntoIter = ItOrderedMaybeVec<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            MaybeOrderedVec::One(one) => ItMaybeVec::One(iter::once(one)),
-            MaybeOrderedVec::Mult(vec) => ItMaybeVec::Mult(vec.into_iter()),
-            MaybeOrderedVec::None => ItMaybeVec::None,
+            MaybeOrderedVec::One(one) => ItOrderedMaybeVec::One(iter::once(one)),
+            MaybeOrderedVec::Mult(vec) => ItOrderedMaybeVec::Mult(vec.into_iter()),
+            MaybeOrderedVec::None => ItOrderedMaybeVec::None,
         }
     }
 }
 
-pub enum ItRefMaybeVec<'a, T> {
+pub enum ItOrderedMaybeVec<T> {
+    None,
+    One(Once<T>),
+    Mult(IntoIter<T>),
+}
+
+impl<T> Iterator for ItOrderedMaybeVec<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ItOrderedMaybeVec::None => None,
+            ItOrderedMaybeVec::One(iter) => iter.next(),
+            ItOrderedMaybeVec::Mult(iter) => iter.next(),
+        }
+    }
+}
+
+
+pub enum ItRefOrderedMaybeVec<'a, T> {
     None,
     One(Once<&'a T>),
     Mult(Iter<'a, T>),
 }
 
-impl<'a, T> Iterator for ItRefMaybeVec<'a, T> {
+impl<'a, T> Iterator for ItRefOrderedMaybeVec<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            ItRefMaybeVec::None => None,
-            ItRefMaybeVec::One(iter) => iter.next(),
-            ItRefMaybeVec::Mult(iter) => iter.next(),
+            ItRefOrderedMaybeVec::None => None,
+            ItRefOrderedMaybeVec::One(iter) => iter.next(),
+            ItRefOrderedMaybeVec::Mult(iter) => iter.next(),
         }
     }
 }
@@ -122,7 +132,7 @@ pub struct MaybeOrderedVecBuilder<T> {
 }
 
 impl<T> MaybeOrderedVecBuilder<T> {
-    pub fn empty() -> Self {
+    #[must_use] pub fn empty() -> Self {
         MaybeOrderedVecBuilder {
             current_value: MaybeOrderedVec::None,
         }
