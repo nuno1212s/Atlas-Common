@@ -25,7 +25,7 @@ default = [
     "crypto_signature_ring_ed25519",
     "crypto_hash_blake3_blake3",
     "collections_randomstate_fxhash",
-    "persistent_db_rocksdb",
+    "persistent_db_sled",
     "serialize_serde"
 ]
 
@@ -77,9 +77,10 @@ collections_randomstate_twox_hash = ["twox-hash"]
 
 # Alternatives for the persistent db type.
 # If no type of this category is presented, it will default to disabled,
-# But the default features do include rocksdb
+# But the default features do include sled
 persistent_db_rocksdb = ["rocksdb"]
-persistent_db_disabled = []
+#persistent_db_redb = ["redb"]
+persistent_db_sled = ["sled"]
 
 serialize_serde = ["serde", "serde-big-array"]
 
@@ -115,8 +116,10 @@ async-channel = { version = "2", optional = true }
 twox-hash = { version = "2", optional = true }
 fxhash = { version = "0.2", optional = true }
 dsrust = { version = "0.1.9", git = "https://github.com/nuno1212s/DSRust", optional = true }
-crossbeam-channel = { version = "0.5.2", optional = true }
+crossbeam-channel = { version = "0.5", optional = true }
 rocksdb = { version = "0", optional = true }
+redb = { version = "*", optional = true }
+sled = { version = "*", optional = true }
 oneshot = "0"
 anyhow = "1"
 thiserror = "2"

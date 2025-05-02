@@ -1,11 +1,12 @@
 use anyhow::{anyhow, Context};
-use std::fmt::format;
+use rocksdb::DBAccess;
 use std::path::Path;
 
 use crate::Err;
 use rocksdb::{
-    ColumnFamily, ColumnFamilyDescriptor, CompactOptions, DBWithThreadMode, Direction,
-    IteratorMode, Options, SingleThreaded, WriteBatchWithTransaction, DB,
+    ColumnFamily, ColumnFamilyDescriptor, CompactOptions, DBIteratorWithThreadMode,
+    DBWithThreadMode, Direction, IteratorMode, Options, SingleThreaded, WriteBatchWithTransaction,
+    DB,
 };
 
 use crate::error::*;
@@ -32,7 +33,7 @@ impl RocksKVDB {
         db_opts.create_missing_column_families(true);
         db_opts.create_if_missing(true);
 
-        let db = DB::open_cf_descriptors(&db_opts, db_location, cfs).unwrap();
+        let db = DB::open_cf_descriptors(&db_opts, db_location, cfs)?;
 
         Ok(RocksKVDB { db })
     }
@@ -122,7 +123,7 @@ impl RocksKVDB {
             batch.put_cf(handle, key, value)
         }
 
-        self.db.write(batch).context(format!("Failed to set keys"))
+        self.db.write(batch).context("Failed to set keys")
     }
 
     pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
@@ -185,19 +186,33 @@ impl RocksKVDB {
             .compact_range_cf_opt(handle, start, end, &CompactOptions::default()))
     }
 
+    pub fn iter(
+        &self,
+        prefix: &'static str,
+    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + '_> {
+        let handle = self.get_handle(prefix)?;
+
+        let iterator = self.db.iterator_cf(handle, IteratorMode::Start);
+
+        Ok(RocksDBIterator {
+            iterator,
+            end: None,
+        })
+    }
+
     pub fn iter_range<T, Y>(
         &self,
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>>
+    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + '_>
     where
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,
     {
         let handle = self.get_handle(prefix)?;
 
-        let mut iterator = if let Some(start) = start {
+        let iterator = if let Some(start) = start {
             self.db.iterator_cf(
                 handle,
                 IteratorMode::From(start.as_ref(), Direction::Forward),
@@ -206,16 +221,54 @@ impl RocksKVDB {
             self.db.iterator_cf(handle, IteratorMode::Start)
         };
 
-        if let Some(end) = end {
-            iterator.set_mode(IteratorMode::From(end.as_ref(), Direction::Reverse));
-        }
+        let rocks_it = if let Some(end) = end {
+            RocksDBIterator {
+                iterator,
+                end: Some(end.as_ref().to_vec().into_boxed_slice()),
+            }
+        } else {
+            RocksDBIterator {
+                iterator,
+                end: None,
+            }
+        };
 
-        let mut bytes = vec![];
-
-        for futures in iterator {
-            bytes.push(Ok(futures?));
-        }
-
-        Ok(Box::new(bytes.into_iter()))
+        Ok(rocks_it)
     }
+}
+
+pub struct RocksDBIterator<'a, T: DBAccess> {
+    iterator: DBIteratorWithThreadMode<'a, T>,
+    end: Option<Box<[u8]>>,
+}
+
+impl<'a, T> Iterator for RocksDBIterator<'a, T>
+where
+    T: DBAccess,
+{
+    type Item = Result<KeyValueEntry>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_item = self.iterator.next().map(|r|
+            r.map(|(k, v)| (k, v))
+                .map_err(From::from));
+
+        if let Some(end) = self.end.clone() {
+            if let Some(item) = &next_item {
+                if let Ok(item) = item {
+                    if *item.0.as_ref() >= *end {
+                        return None;
+                    }
+                }  else {
+                    return next_item;
+                }
+            }
+        }
+        
+        next_item
+    }
+}
+
+pub enum RocksDBError {
+    FailedNoStartForRange,
 }

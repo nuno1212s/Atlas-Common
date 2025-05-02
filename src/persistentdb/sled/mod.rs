@@ -68,13 +68,23 @@ impl SledKVDB {
             .context(format!("Failed to set key in prefix {:?}", prefix))
             .map(|_| ())
     }
-    pub fn set_all<T, Y, Z>(&self, _prefix: &'static str, _values: T) -> Result<()>
+    pub fn set_all<T, Y, Z>(&self, prefix: &'static str, values: T) -> Result<()>
     where
         T: Iterator<Item = (Y, Z)>,
         Y: AsRef<[u8]>,
         Z: AsRef<[u8]>,
     {
-        todo!()
+        let tree = self.get_tree(prefix)?;
+
+        let mut batch = ::sled::Batch::default();
+
+        for (key, value) in values {
+            batch.insert(key.as_ref(), value.as_ref());
+        }
+
+        tree.apply_batch(batch)
+            .context(format!("Failed to set keys in prefix {:?}", prefix))
+            .map(|_| ())
     }
 
     pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
@@ -96,7 +106,9 @@ impl SledKVDB {
         T: Iterator<Item = Y>,
         Y: AsRef<[u8]>,
     {
-        let tree = self.get_tree(prefix)?;
+        let tree = self
+            .get_tree(prefix)
+            .context("Failed to get tree to erase keys")?;
 
         let mut batch = ::sled::Batch::default();
 
@@ -112,7 +124,9 @@ impl SledKVDB {
     where
         T: AsRef<[u8]>,
     {
-        let tree = self.get_tree(prefix)?;
+        let tree = self
+            .get_tree(prefix)
+            .context("Failed to get tree to erase range")?;
 
         let mut batch = sled::Batch::default();
 
@@ -126,16 +140,79 @@ impl SledKVDB {
             .context(format!("Failed to erase range in prefix {:?}", prefix))
     }
 
-    pub fn iter_range<T, Y>(
+    pub fn compact_range<T, Y>(
         &self,
         _prefix: &'static str,
         _start: Option<T>,
         _end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>>
+    ) -> Result<()>
     where
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,
     {
-        todo!()
+        Ok(())
+    }
+
+    pub fn iter(
+        &self,
+        prefix: &'static str,
+    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>>> {
+        let tree = self
+            .get_tree(prefix)
+            .context("Failed to open tree for iterating")?;
+
+        let iter = tree.iter();
+
+        Ok(Box::new(SledKVDBIterator { iterator: iter }))
+    }
+
+    pub fn iter_range<'a, T, Y>(
+        &self,
+        prefix: &'static str,
+        start: Option<T>,
+        end: Option<Y>,
+    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + 'a>
+    where
+        T: AsRef<[u8]> + 'a,
+        Y: AsRef<[u8]> + 'a,
+    {
+        let tree = self
+            .get_tree(prefix)
+            .context("Failed to open tree for iterating")?;
+
+        let iter = match (start, end) {
+            (Some(start), Some(end)) => {
+                tree.range(start.as_ref()..end.as_ref())
+            }
+            (Some(start), None) => {
+                tree.range(start.as_ref()..)
+            }
+            (None, Some(end)) => {
+                tree.range(..end.as_ref())
+            }
+            (None, None) => tree.iter()
+        };
+        
+        Ok(Box::new(SledKVDBIterator { iterator: iter }))
+    }
+}
+
+pub struct SledKVDBIterator {
+    iterator: sled::Iter,
+}
+
+impl Iterator for SledKVDBIterator {
+    type Item = Result<KeyValueEntry>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iterator.next().map(|r| {
+            r.map(|(key, value)| {
+                (
+                    key.to_vec().into_boxed_slice(),
+                    value.to_vec().into_boxed_slice(),
+                )
+            })
+            .map_err(From::from)
+        })
     }
 }

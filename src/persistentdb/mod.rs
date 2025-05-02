@@ -1,9 +1,8 @@
 use std::path::Path;
-#[cfg(feature = "persistent_db_rocksdb")]
 use std::sync::Arc;
 use thiserror::Error;
 
-use crate::error::*;
+use crate::error::Result;
 
 #[cfg(feature = "persistent_db_rocksdb")]
 pub mod rocksdb;
@@ -21,8 +20,9 @@ pub struct KVDB {
     _prefixes: Vec<&'static str>,
     #[cfg(feature = "persistent_db_rocksdb")]
     inner: Arc<rocksdb::RocksKVDB>,
-    //TODO: This should be an else, not just not rocksdb
-    #[cfg(not(feature = "persistent_db_rocksdb"))]
+    #[cfg(feature = "persistent_db_sled")]
+    inner: Arc<sled::SledKVDB>,
+    #[cfg(all(not(feature = "persistent_db_rocksdb"), not(feature = "persistent_db_sled")))]
     inner: disabled::DisabledKV,
 }
 
@@ -40,7 +40,11 @@ impl KVDB {
             {
                 Arc::new(rocksdb::RocksKVDB::new(db_path, prefixes_cpy)?)
             }
-            #[cfg(not(feature = "persistent_db_rocksdb"))]
+            #[cfg(feature = "persistent_db_sled")]
+            {
+                Arc::new(sled::SledKVDB::new(db_path, prefixes_cpy)?)
+            }
+            #[cfg(all(not(feature = "persistent_db_rocksdb"), not(feature = "persistent_db_sled")))]
             {
                 disabled::DisabledKV::new(db_path, prefixes_cpy)?
             }
@@ -138,19 +142,22 @@ impl KVDB {
     pub fn iter(
         &self,
         prefix: &'static str,
-    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>> {
-        self.iter_range::<Vec<u8>, Vec<u8>>(prefix, None, None)
+    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + '_> {
+        self.inner.iter(prefix)
     }
 
-    pub fn iter_range<T, Y>(
+    /// Iterate over a range of keys
+    /// 
+    /// # Errors 
+    pub fn iter_range<'a, T, Y>(
         &self,
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<Box<dyn Iterator<Item = Result<KeyValueEntry>> + '_>>
+    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + 'a>
     where
-        T: AsRef<[u8]>,
-        Y: AsRef<[u8]>,
+        T: AsRef<[u8]> + 'a,
+        Y: AsRef<[u8]> + 'a,
     {
         self.inner.iter_range(prefix, start, end)
     }
