@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use rocksdb::DBAccess;
 use std::path::Path;
 
@@ -10,7 +10,7 @@ use rocksdb::{
 };
 
 use crate::error::*;
-use crate::persistentdb::{KeyValueEntry, PersStorage};
+use crate::persistentdb::{IteratorUtil, PersStorageError};
 
 pub(crate) struct RocksKVDB {
     db: DBWithThreadMode<SingleThreaded>,
@@ -44,11 +44,11 @@ impl RocksKVDB {
         if let Some(handle) = handle {
             Ok(handle)
         } else {
-            Err!(PersStorage::NoPrefix(prefix))
+            Err!(PersStorageError::NoPrefix(prefix))
         }
     }
 
-    pub fn get<T>(&self, prefix: &'static str, key: T) -> Result<Option<Vec<u8>>>
+    pub fn get<T>(&self, prefix: &'static str, key: T) -> Result<Option<impl AsRef<[u8]>>>
     where
         T: AsRef<[u8]>,
     {
@@ -59,33 +59,27 @@ impl RocksKVDB {
             .with_context(|| format!("Failed to get for prefix {:?}", prefix))
     }
 
-    pub fn get_all<T, Y>(&self, keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
+    pub fn get_all<T, Y>(
+        &self,
+        prefix: &'static str,
+        keys: T,
+    ) -> Result<Vec<Option<impl AsRef<[u8]>>>>
     where
-        T: Iterator<Item = (&'static str, Y)>,
+        T: Iterator<Item = Y>,
         Y: AsRef<[u8]>,
     {
-        let final_keys: Result<Vec<_>> = keys
-            .map(|(prefix, key)| {
-                if let Ok(handle) = self.get_handle(prefix) {
-                    Ok((handle, key))
-                } else {
-                    Err(anyhow!(""))
-                }
-            })
-            .collect();
+        let handle = self.get_handle(prefix)?;
 
-        Ok(self
-            .db
-            .multi_get_cf(final_keys?)
+        let final_keys: Vec<(&ColumnFamily, Y)> = keys.map(|key| (handle, key)).collect();
+
+        self.db
+            .multi_get_cf(final_keys)
             .into_iter()
             .map(|r| {
-                if let Ok(result) = r {
-                    Ok(result)
-                } else {
-                    Err(anyhow!(""))
-                }
+                r.map(|value| value.map(Vec::into_boxed_slice))
+                    .map_err(From::from)
             })
-            .collect())
+            .collect()
     }
 
     pub fn exists<T>(&self, prefix: &'static str, key: T) -> Result<bool>
@@ -126,7 +120,7 @@ impl RocksKVDB {
         self.db.write(batch).context("Failed to set keys")
     }
 
-    pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
+    pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<Option<impl AsRef<[u8]>>>
     where
         T: AsRef<[u8]>,
     {
@@ -134,6 +128,7 @@ impl RocksKVDB {
 
         self.db
             .delete_cf(handle, key)
+            .map(|()| None::<Box<[u8]>>)
             .context(format!("Failed to erase key in prefix {:?}", prefix))
     }
 
@@ -186,10 +181,7 @@ impl RocksKVDB {
             .compact_range_cf_opt(handle, start, end, &CompactOptions::default()))
     }
 
-    pub fn iter(
-        &self,
-        prefix: &'static str,
-    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + '_> {
+    pub fn iter(&self, prefix: &'static str) -> Result<impl IteratorUtil + '_> {
         let handle = self.get_handle(prefix)?;
 
         let iterator = self.db.iterator_cf(handle, IteratorMode::Start);
@@ -205,7 +197,7 @@ impl RocksKVDB {
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + '_>
+    ) -> Result<impl IteratorUtil + '_>
     where
         T: AsRef<[u8]>,
         Y: AsRef<[u8]>,
@@ -242,16 +234,24 @@ pub struct RocksDBIterator<'a, T: DBAccess> {
     end: Option<Box<[u8]>>,
 }
 
+impl<'a, T> IteratorUtil for RocksDBIterator<'a, T>
+where
+    T: DBAccess,
+{
+    type ItemType = Box<[u8]>;
+}
+
 impl<'a, T> Iterator for RocksDBIterator<'a, T>
 where
     T: DBAccess,
 {
-    type Item = Result<KeyValueEntry>;
+    type Item = Result<(Box<[u8]>, Box<[u8]>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next_item = self.iterator.next().map(|r|
-            r.map(|(k, v)| (k, v))
-                .map_err(From::from));
+        let next_item = self
+            .iterator
+            .next()
+            .map(|r| r.map(|(k, v)| (k, v)).map_err(From::from));
 
         if let Some(end) = self.end.clone() {
             if let Some(item) = &next_item {
@@ -259,12 +259,12 @@ where
                     if *item.0.as_ref() >= *end {
                         return None;
                     }
-                }  else {
+                } else {
                     return next_item;
                 }
             }
         }
-        
+
         next_item
     }
 }

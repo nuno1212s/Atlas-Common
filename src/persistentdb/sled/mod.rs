@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use crate::error::*;
-use crate::persistentdb::KeyValueEntry;
+use crate::persistentdb::{IteratorUtil, KeyValueEntry};
 use anyhow::Context;
+use sled::IVec;
 use std::path::Path;
 
 pub(crate) struct SledKVDB {
@@ -40,12 +41,29 @@ impl SledKVDB {
 
         Ok(result.map(|v| v.to_vec()))
     }
-    pub fn get_all<T, Y>(&self, _keys: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
+
+    pub fn get_all<T, Y>(
+        &self,
+        prefix: &'static str,
+        keys: T,
+    ) -> Result<Vec<Option<impl AsRef<[u8]>>>>
     where
-        T: Iterator<Item = (&'static str, Y)>,
+        T: Iterator<Item = Y>,
         Y: AsRef<[u8]>,
     {
-        todo!()
+        let tree = self
+            .get_tree(prefix)
+            .context("Failed to get tree for prefix to get all items")?;
+
+        let items = keys
+            .map(|key| {
+                tree.get(key.as_ref())
+                    .map(|v| v.map(|v| v.to_vec()))
+                    .map_err(From::from)
+            })
+            .collect();
+
+        items
     }
 
     pub fn exists<T>(&self, prefix: &'static str, key: T) -> Result<bool>
@@ -65,7 +83,7 @@ impl SledKVDB {
         let tree = self.get_tree(prefix)?;
 
         tree.insert(key.as_ref(), data.as_ref())
-            .context(format!("Failed to set key in prefix {:?}", prefix))
+            .context(format!("Failed to set key in prefix {prefix:?}"))
             .map(|_| ())
     }
     pub fn set_all<T, Y, Z>(&self, prefix: &'static str, values: T) -> Result<()>
@@ -83,19 +101,17 @@ impl SledKVDB {
         }
 
         tree.apply_batch(batch)
-            .context(format!("Failed to set keys in prefix {:?}", prefix))
-            .map(|_| ())
+            .context(format!("Failed to set keys in prefix {prefix:?}"))
     }
 
-    pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
+    pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<Option<impl AsRef<[u8]>>>
     where
         T: AsRef<[u8]>,
     {
         let tree = self.get_tree(prefix)?;
 
         tree.remove(key.as_ref())
-            .context(format!("Failed to erase key in prefix {:?}", prefix))
-            .map(|_| ())
+            .context(format!("Failed to erase key in prefix {prefix:?}"))
     }
 
     /// Delete a set of keys
@@ -137,7 +153,7 @@ impl SledKVDB {
         });
 
         tree.apply_batch(batch)
-            .context(format!("Failed to erase range in prefix {:?}", prefix))
+            .context(format!("Failed to erase range in prefix {prefix:?}"))
     }
 
     pub fn compact_range<T, Y>(
@@ -153,47 +169,38 @@ impl SledKVDB {
         Ok(())
     }
 
-    pub fn iter(
-        &self,
-        prefix: &'static str,
-    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>>> {
+    pub(super) fn iter(&self, prefix: &'static str) -> Result<impl IteratorUtil + '_> {
         let tree = self
             .get_tree(prefix)
             .context("Failed to open tree for iterating")?;
 
         let iter = tree.iter();
 
-        Ok(Box::new(SledKVDBIterator { iterator: iter }))
+        Ok(SledKVDBIterator { iterator: iter })
     }
 
-    pub fn iter_range<'a, T, Y>(
+    pub(super) fn iter_range<T, Y>(
         &self,
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + 'a>
+    ) -> Result<impl IteratorUtil + '_>
     where
-        T: AsRef<[u8]> + 'a,
-        Y: AsRef<[u8]> + 'a,
+        T: AsRef<[u8]>,
+        Y: AsRef<[u8]>,
     {
         let tree = self
             .get_tree(prefix)
             .context("Failed to open tree for iterating")?;
 
         let iter = match (start, end) {
-            (Some(start), Some(end)) => {
-                tree.range(start.as_ref()..end.as_ref())
-            }
-            (Some(start), None) => {
-                tree.range(start.as_ref()..)
-            }
-            (None, Some(end)) => {
-                tree.range(..end.as_ref())
-            }
-            (None, None) => tree.iter()
+            (Some(start), Some(end)) => tree.range(start.as_ref()..end.as_ref()),
+            (Some(start), None) => tree.range(start.as_ref()..),
+            (None, Some(end)) => tree.range(..end.as_ref()),
+            (None, None) => tree.iter(),
         };
-        
-        Ok(Box::new(SledKVDBIterator { iterator: iter }))
+
+        Ok(SledKVDBIterator { iterator: iter })
     }
 }
 
@@ -201,18 +208,14 @@ pub struct SledKVDBIterator {
     iterator: sled::Iter,
 }
 
+impl IteratorUtil for SledKVDBIterator {
+    type ItemType = IVec;
+}
+
 impl Iterator for SledKVDBIterator {
-    type Item = Result<KeyValueEntry>;
+    type Item = Result<(IVec, IVec)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iterator.next().map(|r| {
-            r.map(|(key, value)| {
-                (
-                    key.to_vec().into_boxed_slice(),
-                    value.to_vec().into_boxed_slice(),
-                )
-            })
-            .map_err(From::from)
-        })
+        self.iterator.next().map(|r| r.map_err(From::from))
     }
 }

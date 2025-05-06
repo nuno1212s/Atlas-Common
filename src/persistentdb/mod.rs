@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::path::Path;
 use std::sync::Arc;
 use thiserror::Error;
@@ -22,13 +23,21 @@ pub struct KVDB {
     inner: Arc<rocksdb::RocksKVDB>,
     #[cfg(feature = "persistent_db_sled")]
     inner: Arc<sled::SledKVDB>,
-    #[cfg(all(not(feature = "persistent_db_rocksdb"), not(feature = "persistent_db_sled")))]
+    #[cfg(all(
+        not(feature = "persistent_db_rocksdb"),
+        not(feature = "persistent_db_sled")
+    ))]
     inner: disabled::DisabledKV,
 }
 
 type KeyValueEntry = (Box<[u8]>, Box<[u8]>);
 
 impl KVDB {
+    /// Create a new instance of the database with the given path
+    ///
+    /// # Errors
+    ///
+    /// If the database cannot be created, an error will be returned
     pub fn new<T>(db_path: T, prefixes: Vec<&'static str>) -> Result<Self>
     where
         T: AsRef<Path>,
@@ -38,13 +47,22 @@ impl KVDB {
         let inner = {
             #[cfg(feature = "persistent_db_rocksdb")]
             {
-                Arc::new(rocksdb::RocksKVDB::new(db_path, prefixes_cpy)?)
+                Arc::new(
+                    rocksdb::RocksKVDB::new(db_path, prefixes_cpy)
+                        .context("Failed to create Rocks KVDB")?,
+                )
             }
             #[cfg(feature = "persistent_db_sled")]
             {
-                Arc::new(sled::SledKVDB::new(db_path, prefixes_cpy)?)
+                Arc::new(
+                    sled::SledKVDB::new(db_path, prefixes_cpy)
+                        .context("Failed to create Sled KVDB")?,
+                )
             }
-            #[cfg(all(not(feature = "persistent_db_rocksdb"), not(feature = "persistent_db_sled")))]
+            #[cfg(all(
+                not(feature = "persistent_db_rocksdb"),
+                not(feature = "persistent_db_sled")
+            ))]
             {
                 disabled::DisabledKV::new(db_path, prefixes_cpy)?
             }
@@ -57,7 +75,11 @@ impl KVDB {
     }
 
     /// Get the corresponding value of a given prefix + key combo in the database
-    pub fn get<T>(&self, prefix: &'static str, key: T) -> Result<Option<Vec<u8>>>
+    ///
+    /// # Errors
+    ///
+    /// Errors will be returned when failing to get the prefix handle
+    pub fn get<T>(&self, prefix: &'static str, key: T) -> Result<Option<impl AsRef<[u8]>>>
     where
         T: AsRef<[u8]>,
     {
@@ -65,12 +87,22 @@ impl KVDB {
     }
 
     /// Get the corresponding value for a given set of keys
-    pub fn get_all<T, Y>(&self, key: T) -> Result<Vec<Result<Option<Vec<u8>>>>>
+    ///
+    /// # Errors
+    ///
+    /// Errors will be returned when failing to get the prefix handle or each
+    /// of the individual keys.
+    /// Keys not existing in the database will return `None`
+    pub fn get_all<T, Y>(
+        &self,
+        prefix: &'static str,
+        key: T,
+    ) -> Result<Vec<Option<impl AsRef<[u8]>>>>
     where
-        T: Iterator<Item = (&'static str, Y)>,
+        T: Iterator<Item = Y>,
         Y: AsRef<[u8]>,
     {
-        self.inner.get_all(key)
+        self.inner.get_all(prefix, key)
     }
 
     ///Check if the given prefix + key combination exists in the database
@@ -98,7 +130,7 @@ impl KVDB {
         self.inner.set_all(prefix, values)
     }
 
-    pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<()>
+    pub fn erase<T>(&self, prefix: &'static str, key: T) -> Result<Option<impl AsRef<[u8]>>>
     where
         T: AsRef<[u8]>,
     {
@@ -139,32 +171,35 @@ impl KVDB {
         self.inner.compact_range(prefix, start, end)
     }
 
-    pub fn iter(
-        &self,
-        prefix: &'static str,
-    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + '_> {
+    pub fn iter(&self, prefix: &'static str) -> Result<impl IteratorUtil + '_> {
         self.inner.iter(prefix)
     }
 
     /// Iterate over a range of keys
-    /// 
-    /// # Errors 
-    pub fn iter_range<'a, T, Y>(
+    ///
+    /// # Errors
+    pub fn iter_range<T, Y>(
         &self,
         prefix: &'static str,
         start: Option<T>,
         end: Option<Y>,
-    ) -> Result<impl Iterator<Item = Result<KeyValueEntry>> + 'a>
+    ) -> Result<impl IteratorUtil + '_>
     where
-        T: AsRef<[u8]> + 'a,
-        Y: AsRef<[u8]> + 'a,
+        T: AsRef<[u8]>,
+        Y: AsRef<[u8]>,
     {
         self.inner.iter_range(prefix, start, end)
     }
 }
 
 #[derive(Error, Debug)]
-pub enum PersStorage {
+pub enum PersStorageError {
     #[error("Failed to get prefix by that name {0}")]
     NoPrefix(&'static str),
+}
+
+pub const INLINE_CUTOFF: usize = 22;
+
+pub trait IteratorUtil: Iterator<Item = Result<(Self::ItemType, Self::ItemType)>> {
+    type ItemType: AsRef<[u8]>;
 }
