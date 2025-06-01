@@ -39,14 +39,14 @@ pub(super) struct SerializableKeyPart {
     key: SerdeSecret<SecretKeyShare>
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub(super) struct PartialSignature {
     sig: threshold_crypto::SignatureShare,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub(super) struct Signature {

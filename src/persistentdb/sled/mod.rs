@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use crate::error::*;
-use crate::persistentdb::{IteratorUtil, KeyValueEntry};
+use crate::error::Result;
+use crate::persistentdb::{IteratorUtil};
 use anyhow::Context;
 use sled::IVec;
 use std::path::Path;
@@ -133,7 +133,7 @@ impl SledKVDB {
         }
 
         tree.apply_batch(batch)
-            .context(format!("Failed to erase keys in prefix {:?}", prefix))
+            .context(format!("Failed to erase keys in prefix {prefix:?}"))
     }
 
     pub fn erase_range<T>(&self, prefix: &'static str, start: T, end: T) -> Result<()>

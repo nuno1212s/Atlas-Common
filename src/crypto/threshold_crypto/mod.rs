@@ -47,14 +47,14 @@ pub struct PrivateKeySet {
     key: thold_crypto::SecretKeySet,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct PartialSignature {
     sig: thold_crypto::PartialSignature,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub struct CombinedSignature {
