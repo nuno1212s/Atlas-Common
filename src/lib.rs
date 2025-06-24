@@ -46,6 +46,7 @@ pub mod serialization_helper;
 pub mod socket;
 pub mod system_params;
 pub mod threadpool;
+pub mod circuit_breaker;
 
 static INITIALIZED: Flag = Flag::new();
 
