@@ -177,16 +177,12 @@ pub enum ParsePublicKeyError {
 
 impl From<PrivateKeyPart> for SerializableKeyPart {
     fn from(pk: PrivateKeyPart) -> SerializableKeyPart {
-        SerializableKeyPart {
-            key: pk.key.into(),
-        }
+        SerializableKeyPart { key: pk.key.into() }
     }
 }
 
 impl From<SerializableKeyPart> for PrivateKeyPart {
     fn from(pk: SerializableKeyPart) -> PrivateKeyPart {
-        PrivateKeyPart {
-            key: pk.key.into(),
-        }
+        PrivateKeyPart { key: pk.key.into() }
     }
 }

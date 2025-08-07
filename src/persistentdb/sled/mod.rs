@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::error::Result;
-use crate::persistentdb::{IteratorUtil};
+use crate::persistentdb::IteratorUtil;
 use anyhow::Context;
 use sled::IVec;
 use std::path::Path;

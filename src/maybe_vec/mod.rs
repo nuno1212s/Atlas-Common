@@ -17,24 +17,27 @@ pub enum MaybeVec<T> {
     Mult(Vec<T>),
 }
 
-
 impl<T> MaybeVec<T> {
-    #[must_use] pub fn from_one(member: T) -> Self {
+    #[must_use]
+    pub fn from_one(member: T) -> Self {
         Self::One(member)
     }
-    
-    #[must_use] pub fn from_option(option: Option<T>) -> Self {
+
+    #[must_use]
+    pub fn from_option(option: Option<T>) -> Self {
         match option {
             Some(value) => Self::One(value),
             None => Self::None,
         }
     }
 
-    #[must_use] pub fn from_many(objects: Vec<T>) -> Self {
+    #[must_use]
+    pub fn from_many(objects: Vec<T>) -> Self {
         Self::Mult(objects)
     }
 
-    #[must_use] pub fn builder() -> MaybeVecBuilder<T> {
+    #[must_use]
+    pub fn builder() -> MaybeVecBuilder<T> {
         MaybeVecBuilder::empty()
     }
 
@@ -249,4 +252,3 @@ impl<T> MaybeVecBuilder<T> {
         self.current_value
     }
 }
-

@@ -31,6 +31,7 @@ use tracing::{debug, instrument};
 
 pub mod async_runtime;
 pub mod channel;
+pub mod circuit_breaker;
 pub mod collections;
 pub mod config_utils;
 pub mod crypto;
@@ -46,7 +47,6 @@ pub mod serialization_helper;
 pub mod socket;
 pub mod system_params;
 pub mod threadpool;
-pub mod circuit_breaker;
 
 static INITIALIZED: Flag = Flag::new();
 

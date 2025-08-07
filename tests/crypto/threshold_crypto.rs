@@ -1,5 +1,7 @@
 use atlas_common::collections::HashMap;
-use atlas_common::crypto::threshold_crypto::{PrivateKeyPart, PrivateKeySet, PublicKeyPart, PublicKeySet};
+use atlas_common::crypto::threshold_crypto::{
+    PrivateKeyPart, PrivateKeySet, PublicKeyPart, PublicKeySet,
+};
 use atlas_common::node_id::NodeId;
 
 struct CryptoInfoMockFactory {
@@ -7,7 +9,6 @@ struct CryptoInfoMockFactory {
     pkey_set: PrivateKeySet,
     pub_key_set: PublicKeySet,
 }
-
 
 impl CryptoInfoMockFactory {
     fn calculate_threshold_for_node_count(node_count: usize) -> usize {
@@ -65,7 +66,6 @@ struct CryptoInfoMock {
 }
 
 impl CryptoInfoMock {
-
     fn get_own_private_key(&self) -> &PrivateKeyPart {
         &self.private_key_part
     }
@@ -84,9 +84,7 @@ impl CryptoInfoMock {
     fn get_public_key_set(&self) -> &PublicKeySet {
         &self.pub_key_set
     }
-    
 }
-
 
 const NODE_COUNT: usize = 4;
 
@@ -106,14 +104,18 @@ fn test_partial_signature_verification() {
     nodes.iter().for_each(|signer| {
         let crypto_mock_for_id = cryptos.get(signer).unwrap();
 
-        let signature = crypto_mock_for_id.get_own_private_key().partially_sign(to_sign);
-        
+        let signature = crypto_mock_for_id
+            .get_own_private_key()
+            .partially_sign(to_sign);
+
         nodes.iter().for_each(|other_node_id| {
             let crypto_mock_other = cryptos.get(other_node_id).unwrap();
 
             let public_key_part = crypto_mock_other.get_public_key_for_index(signer.0 as usize);
-            
-            public_key_part.verify(to_sign, &signature).expect("Failed to verify signature");
+
+            public_key_part
+                .verify(to_sign, &signature)
+                .expect("Failed to verify signature");
         });
     });
 }
@@ -147,8 +149,14 @@ fn test_partial_signature_combination() {
     });
 
     cryptos.values().for_each(|crypto| {
-        let combined_signature = crypto.get_public_key_set().combine_signatures(signatures.iter().map(|(id, sig)| (id.0 as u64, sig))).unwrap();
+        let combined_signature = crypto
+            .get_public_key_set()
+            .combine_signatures(signatures.iter().map(|(id, sig)| (id.0 as u64, sig)))
+            .unwrap();
 
-        crypto.get_public_key_set().verify(to_sign, &combined_signature).expect("Failed to verify combined signature");
+        crypto
+            .get_public_key_set()
+            .verify(to_sign, &combined_signature)
+            .expect("Failed to verify combined signature");
     });
 }

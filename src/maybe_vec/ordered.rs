@@ -11,21 +11,25 @@ pub enum MaybeOrderedVec<T> {
 }
 
 impl<T> MaybeOrderedVec<T> {
-    #[must_use] pub fn builder() -> MaybeOrderedVecBuilder<T> {
+    #[must_use]
+    pub fn builder() -> MaybeOrderedVecBuilder<T> {
         MaybeOrderedVecBuilder {
             current_value: Self::None,
         }
     }
 
-    #[must_use] pub fn empty() -> Self {
+    #[must_use]
+    pub fn empty() -> Self {
         Self::None
     }
 
-    #[must_use] pub fn from_one(member: T) -> Self {
+    #[must_use]
+    pub fn from_one(member: T) -> Self {
         Self::One(member)
     }
 
-    #[must_use] pub fn from_many(objects: Vec<T>) -> Self
+    #[must_use]
+    pub fn from_many(objects: Vec<T>) -> Self
     where
         T: Ord,
     {
@@ -38,7 +42,8 @@ impl<T> MaybeOrderedVec<T> {
         Self::Mult(result)
     }
 
-    #[must_use] pub fn from_set(set: BTreeSet<T>) -> Self {
+    #[must_use]
+    pub fn from_set(set: BTreeSet<T>) -> Self {
         Self::Mult(set)
     }
 
@@ -107,7 +112,6 @@ impl<T> Iterator for ItOrderedMaybeVec<T> {
     }
 }
 
-
 pub enum ItRefOrderedMaybeVec<'a, T> {
     None,
     One(Once<&'a T>),
@@ -132,7 +136,8 @@ pub struct MaybeOrderedVecBuilder<T> {
 }
 
 impl<T> MaybeOrderedVecBuilder<T> {
-    #[must_use] pub fn empty() -> Self {
+    #[must_use]
+    pub fn empty() -> Self {
         MaybeOrderedVecBuilder {
             current_value: MaybeOrderedVec::None,
         }

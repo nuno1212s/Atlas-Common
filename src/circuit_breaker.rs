@@ -10,19 +10,22 @@ pub struct CircuitBreaker {
 const MAX_FAILURES: usize = 10;
 
 impl CircuitBreaker {
-    pub fn execute_in_circuit_breaker<F, T, E>(function: F, threshold_number: Option<usize>) -> Result<T, E>
+    pub fn execute_in_circuit_breaker<F, T, E>(
+        function: F,
+        threshold_number: Option<usize>,
+    ) -> Result<T, E>
     where
         F: FnMut() -> Result<T, E>,
-        E: Debug
+        E: Debug,
     {
         let mut breaker = Self {
             threshold_number: threshold_number.unwrap_or(MAX_FAILURES),
             current_failures_in_row: 0,
         };
-        
+
         breaker.execute(function)
     }
-    
+
     pub fn new(threshold_number: Option<usize>) -> Self {
         Self {
             threshold_number: threshold_number.unwrap_or(MAX_FAILURES),
@@ -51,13 +54,13 @@ impl CircuitBreaker {
                     Err(err)
                 } else {
                     warn!("Error occurred, but circuit breaker is not open yet. Current failures in row: {}. Error: {:?}", self.current_failures_in_row, err);
-                    
+
                     self.execute(function)
                 }
             }
         }
     }
-    
+
     fn reset(&mut self) {
         self.current_failures_in_row = 0;
     }

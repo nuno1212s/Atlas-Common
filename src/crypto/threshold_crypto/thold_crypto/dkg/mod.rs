@@ -487,10 +487,7 @@ pub mod dkg_test {
         for node in 1..=DEALERS {
             let pk_part = sec_key_set.get_key_share(node);
 
-            assert_eq!(
-                pk_part.public_key_part(),
-                pk_set.get_public_key_part(node)
-            );
+            assert_eq!(pk_part.public_key_part(), pk_set.get_public_key_part(node));
         }
     }
 

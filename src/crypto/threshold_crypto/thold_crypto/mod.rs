@@ -6,8 +6,8 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use threshold_crypto::error::{Error, FromBytesError};
 use threshold_crypto::poly::Commitment;
-use threshold_crypto::{Fr, IntoFr, SecretKeyShare};
 use threshold_crypto::serde_impl::SerdeSecret;
+use threshold_crypto::{Fr, IntoFr, SecretKeyShare};
 
 pub mod dkg;
 //mod async_dkg;
@@ -36,7 +36,7 @@ pub(super) struct PrivateKeyPart {
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub(super) struct SerializableKeyPart {
-    key: SerdeSecret<SecretKeyShare>
+    key: SerdeSecret<SecretKeyShare>,
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
@@ -78,7 +78,6 @@ impl PublicKeyPart {
 }
 
 impl SecretKeySet {
-    
     pub fn generate_random(n: usize) -> SecretKeySet {
         let mut rand = rand::rngs::OsRng;
 
@@ -235,8 +234,6 @@ impl From<PrivateKeyPart> for SerializableKeyPart {
 
 impl From<SerializableKeyPart> for PrivateKeyPart {
     fn from(value: SerializableKeyPart) -> Self {
-        PrivateKeyPart {
-            key: value.key.0,
-        }
+        PrivateKeyPart { key: value.key.0 }
     }
 }
