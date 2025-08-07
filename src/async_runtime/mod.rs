@@ -6,27 +6,22 @@ mod tokio;
 #[cfg(feature = "async_runtime_async_std")]
 mod async_std;
 
+use crate::error::Result;
 use anyhow::Context;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::OnceLock;
 use std::task::{Context as Cntx, Poll};
-use std::time::Duration;
-
-use crate::error::*;
-use crate::globals::Global;
 
 #[cfg(feature = "async_runtime_tokio")]
-static mut RUNTIME: Global<tokio::Runtime> = Global::new();
+static RUNTIME: OnceLock<tokio::Runtime> = OnceLock::new();
 
 #[cfg(feature = "async_runtime_async_std")]
-static mut RUNTIME: Global<async_std::Runtime> = Global::new();
+static RUNTIME: OnceLock<async_std::Runtime> = OnceLock::new();
 
 macro_rules! runtime {
     () => {
-        match unsafe { RUNTIME.get() } {
-            Some(ref rt) => rt,
-            None => panic!("Async runtime wasn't initialized"),
-        }
+        RUNTIME.get().expect("Async runtime wasn't initialized")
     };
 }
 
@@ -49,15 +44,23 @@ pub struct JoinHandle<T> {
 ///
 /// # Safety
 /// This is safe when it's the first called function and when it's only called once
-pub unsafe fn init(num_threads: usize) -> Result<()> {
+pub fn init(num_threads: usize) -> Result<()> {
     #[cfg(feature = "async_runtime_tokio")]
     {
-        tokio::init(num_threads).map(|rt| RUNTIME.set(rt))
+        let runtime = tokio::init(num_threads)?;
+
+        RUNTIME.set(runtime).map_err(|err| {
+            anyhow::anyhow!("Failed to set Tokio runtime: {:?}", err)
+        })
     }
 
     #[cfg(feature = "async_runtime_async_std")]
     {
-        async_std::init(num_threads).map(|rt| RUNTIME.set(rt))
+        let runtime = async_std::init(num_threads);
+
+        RUNTIME.set(runtime).map_err(|err| {
+            anyhow::anyhow!("Failed to set Async Runtime runtime: {:?}", err)
+        })
     }
 }
 
@@ -69,10 +72,6 @@ pub unsafe fn init(num_threads: usize) -> Result<()> {
 /// # Safety
 /// Safe when called after [init()]
 pub unsafe fn drop() -> Result<()> {
-    if let Some(rt) = RUNTIME.drop() {
-        rt.shutdown_timeout(Duration::from_secs(1));
-    }
-
     Ok(())
 }
 
@@ -133,5 +132,5 @@ pub async fn yield_now() {
         }
     }
 
-    YieldNow { yielded: false }.await
+    YieldNow { yielded: false }.await;
 }
