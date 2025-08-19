@@ -14,7 +14,7 @@ pub type RandomState = ::twox_hash::RandomXxh3HashBuilder64;
 pub type RandomState = ::std::collections::hash_map::RandomState;
 
 /// A map which, as the name suggests, maintains the order of its `(K, V)` pairs.
-pub type OrderedMap<K, V> = ::linked_hash_map::LinkedHashMap<K, V, RandomState>;
+pub type LinkedHashMap<K, V> = ::linked_hash_map::LinkedHashMap<K, V, RandomState>;
 
 /// A `HashMap` with a faster hashing function.
 pub type HashMap<K, V> = ::std::collections::HashMap<K, V, RandomState>;
@@ -25,8 +25,8 @@ pub type HashSet<T> = ::std::collections::HashSet<T, RandomState>;
 pub type ConcurrentHashMap<K, V> = DashMap<K, V, RandomState>;
 
 /// Creates a new `OrderedMap`.
-pub fn ordered_map<K: Eq + ::std::hash::Hash, V>() -> OrderedMap<K, V> {
-    OrderedMap::with_hasher(Default::default())
+pub fn linked_hash_map<K: Eq + ::std::hash::Hash, V>() -> LinkedHashMap<K, V> {
+    LinkedHashMap::with_hasher(Default::default())
 }
 
 /// Creates a new `HashMap`.

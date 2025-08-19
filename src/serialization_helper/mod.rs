@@ -25,10 +25,22 @@ impl<T> SerMsg for T where T: NonSyncSerMsg + Sync {}
 impl<T> SerMsg for T where T: NonSyncSerMsg + Sync {}
 
 #[cfg(feature = "serialize_serde")]
-pub trait NonSyncSerMsg: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}
+pub trait NonSyncSerMsg: Ser + Clone + Send {}
 
 #[cfg(feature = "serialize_serde")]
-impl<T> NonSyncSerMsg for T where T: 'static + for<'a> Deserialize<'a> + Serialize + Clone + Send {}
+impl<T> NonSyncSerMsg for T where T: Ser + Clone + Send {}
 
 #[cfg(feature = "serialize_capnp")]
 impl<T> NonSyncSerMsg for T where T: 'static + Clone {}
+
+#[cfg(feature = "serialize_serde")]
+pub trait Ser: 'static + for<'a> Deserialize<'a> + Serialize {}
+
+#[cfg(feature = "serialize_capnp")]
+pub trait Ser: 'static {}
+
+#[cfg(feature = "serialize_serde")]
+impl<T> Ser for T where T: 'static + for<'a> Deserialize<'a> + Serialize {}
+
+#[cfg(feature = "serialize_capnp")]
+impl<T> Ser for T where T: 'static {}

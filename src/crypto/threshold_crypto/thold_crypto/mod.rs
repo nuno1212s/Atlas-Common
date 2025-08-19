@@ -12,7 +12,7 @@ use threshold_crypto::{Fr, IntoFr, SecretKeyShare};
 pub mod dkg;
 //mod async_dkg;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serialize_serde", derive(Serialize, Deserialize))]
 pub(super) struct PublicKey {
