@@ -99,8 +99,6 @@ impl<T: Sync + 'static> Global<T> {
     }
 }
 
-
-
 /// A wrapper for non sync types to become Sync,
 /// By only providing a read access to it.
 /// If <T> is !Sync, then this is unsafe and can lead
