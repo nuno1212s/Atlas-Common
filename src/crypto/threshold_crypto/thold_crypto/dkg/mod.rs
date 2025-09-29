@@ -616,12 +616,14 @@ pub mod dkg_test {
             .collect()
     }
 
-    fn generate_keys_for_nodes() -> Vec<(
+    type GeneratedKey = (
         PublicKeySet,
         PrivateKeyPart,
         ChannelSyncRx<NodeMessage>,
         Vec<(usize, usize)>,
-    )> {
+    );
+
+    fn generate_keys_for_nodes() -> Vec<GeneratedKey> {
         let participating_nodes = (1..=NODES)
             .map(|node_id| {
                 let (tx, rx) = channel::sync::new_bounded_sync(QUEUE_SIZE, None::<&str>);
@@ -749,8 +751,8 @@ pub mod dkg_test {
 
                     let (pk, sk) = dkg.finalize().unwrap();
 
-                    eprintln!("Client {} has finished the DKG protocol", id);
-                    eprintln!("Public key: {:?}", pk);
+                    eprintln!("Client {id} has finished the DKG protocol");
+                    eprintln!("Public key: {pk:?}");
                     eprintln!("Private key share: {:?}", sk.key.reveal());
 
                     return (pk, sk, rx_channel, ack_reception_order);
