@@ -117,9 +117,7 @@ impl<T> ChannelMixedRx<T> {
     pub fn recv_sync(&self) -> Result<T, RecvError> {
         match self.inner.recv() {
             Ok(elem) => Ok(elem),
-            Err(_) => {
-                Err(RecvError::ChannelDc)
-            }
+            Err(_) => Err(RecvError::ChannelDc),
         }
     }
 
@@ -128,12 +126,8 @@ impl<T> ChannelMixedRx<T> {
         match self.inner.recv_timeout(timeout) {
             Ok(elem) => Ok(elem),
             Err(err) => match err {
-                RecvTimeoutError::Timeout => {
-                    Err(TryRecvError::Timeout)
-                }
-                RecvTimeoutError::Disconnected => {
-                    Err(TryRecvError::ChannelDc)
-                }
+                RecvTimeoutError::Timeout => Err(TryRecvError::Timeout),
+                RecvTimeoutError::Disconnected => Err(TryRecvError::ChannelDc),
             },
         }
     }
@@ -143,12 +137,8 @@ impl<T> ChannelMixedRx<T> {
         match self.inner.try_recv() {
             Ok(ele) => Ok(ele),
             Err(err) => match err {
-                flume::TryRecvError::Empty => {
-                    Err(TryRecvError::ChannelEmpty)
-                }
-                flume::TryRecvError::Disconnected => {
-                    Err(TryRecvError::ChannelDc)
-                }
+                flume::TryRecvError::Empty => Err(TryRecvError::ChannelEmpty),
+                flume::TryRecvError::Disconnected => Err(TryRecvError::ChannelDc),
             },
         }
     }
@@ -161,9 +151,7 @@ impl<'a, T> Future for ChannelRxFut<'a, T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, RecvError>> {
         Pin::new(&mut self.inner).poll(cx).map(|r| match r {
             Ok(res) => Ok(res),
-            Err(_) => {
-                Err(RecvError::ChannelDc)
-            }
+            Err(_) => Err(RecvError::ChannelDc),
         })
     }
 }
@@ -179,10 +167,7 @@ impl<'a, T> Future for ChannelTxFut<'a, T> {
     type Output = Result<(), SendReturnError<T>>;
 
     #[inline]
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Result<(), SendReturnError<T>>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), SendReturnError<T>>> {
         Pin::new(&mut self.inner).poll(cx).map(|r| match r {
             Ok(_) => Ok(()),
             Err(err) => Err(SendReturnError::FailedToSend(err.into_inner())),

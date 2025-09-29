@@ -12,7 +12,6 @@ type InnerSyncChannelRx<T> = super::crossbeam::ChannelSyncRx<T>;
 #[cfg(feature = "channel_sync_crossbeam")]
 type InnerSyncChannelTx<T> = super::crossbeam::ChannelSyncTx<T>;
 
-
 #[cfg(feature = "channel_sync_flume")]
 type InnerSyncChannelRx<T> = flume_mpmc::ChannelMixedRx<T>;
 

@@ -120,8 +120,7 @@ impl<T> ChannelSyncRx<T> {
 
     #[inline]
     pub fn recv(&self) -> Result<T, RecvError> {
-        self.inner.recv()
-            .map_err(|_| RecvError::ChannelDc)
+        self.inner.recv().map_err(|_| RecvError::ChannelDc)
     }
 
     #[inline]

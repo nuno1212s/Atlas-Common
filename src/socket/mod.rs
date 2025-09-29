@@ -18,7 +18,7 @@ use mio::{Interest, Registry, Token};
 use tracing::error;
 
 use rustls::{ClientConnection, ServerConnection};
-use socket2::{ Socket};
+use socket2::Socket;
 use tokio_rustls::TlsStream;
 use tokio_util::compat::{
     Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
@@ -238,8 +238,7 @@ pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncList
 }
 
 pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener, io::Error> {
-    { std_tcp::bind(addr) }
-        .and_then(|inner| set_listener_options_replica(SyncListener { inner }))
+    { std_tcp::bind(addr) }.and_then(|inner| set_listener_options_replica(SyncListener { inner }))
 }
 
 /// Connects to the remote node pointed to by the address `addr`.

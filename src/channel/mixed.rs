@@ -40,9 +40,7 @@ impl<T> ChannelMixedRx<T> {
     pub fn recv(&self) -> Result<T, RecvError> {
         match self.inner.recv_sync() {
             Ok(res) => Ok(res),
-            Err(_err) => {
-                Err(RecvError::ChannelDc)
-            }
+            Err(_err) => Err(RecvError::ChannelDc),
         }
     }
 

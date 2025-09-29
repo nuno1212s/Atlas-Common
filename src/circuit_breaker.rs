@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use tracing::warn;
 
-
 pub struct CircuitBreaker {
     threshold_number: usize,
     current_failures_in_row: usize,

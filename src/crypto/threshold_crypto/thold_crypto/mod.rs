@@ -168,7 +168,10 @@ impl PublicKeySet {
     }
 
     #[inline(always)]
-    pub(super) fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature, CombineSignatureError>
+    pub(super) fn combine_signatures<'a, T, I>(
+        &self,
+        sigs: I,
+    ) -> Result<Signature, CombineSignatureError>
     where
         I: IntoIterator<Item = (T, &'a PartialSignature)>,
         T: IntoFr,

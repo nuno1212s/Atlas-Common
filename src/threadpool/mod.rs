@@ -123,8 +123,7 @@ macro_rules! pool {
 pub fn init(num_threads: usize) -> Result<()> {
     let replica_pool = Builder::new().num_threads(num_threads).build();
 
-    POOL.set(replica_pool)
-        .map_err(|_| InitPoolError)?;
+    POOL.set(replica_pool).map_err(|_| InitPoolError)?;
 
     Ok(())
 }
