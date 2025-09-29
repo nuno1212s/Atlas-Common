@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use tracing::warn;
 
-#[allow(dead_code)]
 
 pub struct CircuitBreaker {
     threshold_number: usize,
@@ -62,6 +61,7 @@ impl CircuitBreaker {
         }
     }
 
+    #[allow(dead_code)]
     fn reset(&mut self) {
         self.current_failures_in_row = 0;
     }

@@ -6,7 +6,8 @@ mod crossbeam;
 mod rayon;
 
 use crate::error::*;
-use crate::globals::Global;
+use std::sync::OnceLock;
+use thiserror::Error;
 
 /// A thread pool type, used to run intensive CPU tasks.
 ///
@@ -100,11 +101,11 @@ impl ThreadPool {
 ///
 /// UPDATE: This is no longer the case given that we no longer use threadpools for message sending, just
 /// for signing and serializing them
-static mut POOL: Global<ThreadPool> = Global::new();
+static POOL: OnceLock<ThreadPool> = OnceLock::new();
 
 macro_rules! pool {
     () => {
-        match unsafe { POOL.get() } {
+        match { POOL.get() } {
             Some(ref pool) => pool,
             None => panic!("Client thread pool wasn't initialized"),
         }
@@ -119,12 +120,18 @@ macro_rules! pool {
 ///
 /// Safe when this is called at the beginning of the program (before all others)
 /// and when only called ONCE
-pub unsafe fn init(num_threads: usize) -> Result<()> {
+pub fn init(num_threads: usize) -> Result<()> {
     let replica_pool = Builder::new().num_threads(num_threads).build();
 
-    POOL.set(replica_pool);
+    POOL.set(replica_pool)
+        .map_err(|_| InitPoolError)?;
+
     Ok(())
 }
+
+#[derive(Error, Debug)]
+#[error("The global thread pool was already initialized")]
+struct InitPoolError;
 
 /// This function drops the global thread pool.
 ///
@@ -134,9 +141,9 @@ pub unsafe fn init(num_threads: usize) -> Result<()> {
 /// # Safety
 ///
 /// Safe when called after [init] and when the last called function
-pub unsafe fn drop() -> Result<()> {
+pub fn drop() -> Result<()> {
     join();
-    POOL.drop();
+
     Ok(())
 }
 

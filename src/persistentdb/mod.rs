@@ -30,8 +30,10 @@ pub struct KVDB {
     inner: disabled::DisabledKV,
 }
 
+#[allow(dead_code)]
 type KeyValueEntry = (Box<[u8]>, Box<[u8]>);
 
+#[allow(dead_code)]
 impl KVDB {
     /// Create a new instance of the database with the given path
     ///

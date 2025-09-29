@@ -2,9 +2,11 @@ use crate::error::*;
 use crate::persistentdb::KeyValueEntry;
 use std::path::Path;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub(crate) struct DisabledKV;
 
+#[allow(dead_code)]
 impl DisabledKV {
     pub fn new<T>(_db_location: T, _prefixes: Vec<&'static str>) -> Result<Self>
     where
