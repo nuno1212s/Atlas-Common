@@ -1,6 +1,7 @@
-use std::error::Error;
 use std::fmt::Debug;
 use tracing::warn;
+
+#[allow(dead_code)]
 
 pub struct CircuitBreaker {
     threshold_number: usize,

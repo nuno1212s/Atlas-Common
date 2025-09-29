@@ -83,6 +83,8 @@ persistent_db_rocksdb = ["rocksdb"]
 persistent_db_sled = ["sled"]
 
 serialize_serde = ["serde", "serde-big-array"]
+# Currently not working due to missing implementations after big refactor
+serialize_capnp = []
 
 [dependencies]
 either = "1"

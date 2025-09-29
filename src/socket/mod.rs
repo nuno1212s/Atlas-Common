@@ -1,6 +1,5 @@
 //! Abstractions over different socket types of crates in the Rust ecosystem.
 
-use anyhow::Context;
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 use std::net::SocketAddr;
@@ -19,7 +18,7 @@ use mio::{Interest, Registry, Token};
 use tracing::error;
 
 use rustls::{ClientConnection, ServerConnection};
-use socket2::{SockRef, Socket};
+use socket2::{ Socket};
 use tokio_rustls::TlsStream;
 use tokio_util::compat::{
     Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
@@ -658,7 +657,7 @@ pub enum WriteHalf {
 pub struct WriteHalfAsync {
     #[cfg(feature = "socket_tokio_tcp")]
     inner: BufWriter<tokio_tcp::WriteHalf>,
-    #[cfg(feature = "socket_async_tcp")]
+    #[cfg(feature = "socket_async_std_tcp")]
     inner: BufWriter<async_std_tcp::WriteHalf>,
 }
 
@@ -674,7 +673,7 @@ pub enum ReadHalf {
 pub struct ReadHalfAsync {
     #[cfg(feature = "socket_tokio_tcp")]
     inner: BufReader<tokio_tcp::ReadHalf>,
-    #[cfg(feature = "socket_async_tcp")]
+    #[cfg(feature = "socket_async_std_tcp")]
     inner: BufReader<async_std_tcp::ReadHalf>,
 }
 

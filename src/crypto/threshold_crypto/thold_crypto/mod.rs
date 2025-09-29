@@ -1,7 +1,6 @@
 use crate::crypto::threshold_crypto::{
     CombineSignatureError, ParsePublicKeyError, VerifySignatureError,
 };
-use anyhow::anyhow;
 #[cfg(feature = "serialize_serde")]
 use serde::{Deserialize, Serialize};
 use threshold_crypto::error::{Error, FromBytesError};
@@ -86,7 +85,7 @@ impl SecretKeySet {
         SecretKeySet { sk_set }
     }
 
-    pub fn get_key_share(&self, i: usize) -> PrivateKeyPart {
+    pub(super) fn get_key_share(&self, i: usize) -> PrivateKeyPart {
         let key = self.sk_set.secret_key_share(i);
 
         PrivateKeyPart { key }
@@ -119,6 +118,7 @@ impl PrivateKeyPart {
     }
 }
 
+#[allow(dead_code)]
 impl PublicKey {
     #[inline]
     pub fn verify_combined_signatures(&self, sig: &Signature, msg: &[u8]) -> bool {
@@ -144,21 +144,21 @@ impl PublicKey {
 
 impl PublicKeySet {
     #[inline(always)]
-    pub fn public_key(&self) -> PublicKey {
+    pub(super) fn public_key(&self) -> PublicKey {
         let key = self.pk_set.public_key();
 
         PublicKey { key }
     }
 
     #[inline(always)]
-    pub fn get_public_key_part(&self, i: usize) -> PublicKeyPart {
+    pub(super) fn get_public_key_part(&self, i: usize) -> PublicKeyPart {
         let key = self.pk_set.public_key_share(i);
 
         PublicKeyPart { key }
     }
 
     #[inline(always)]
-    pub fn verify_partial_signature(
+    pub(super) fn verify_partial_signature(
         &self,
         index: usize,
         msg: &[u8],
@@ -168,7 +168,7 @@ impl PublicKeySet {
     }
 
     #[inline(always)]
-    pub fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature, CombineSignatureError>
+    pub(super) fn combine_signatures<'a, T, I>(&self, sigs: I) -> Result<Signature, CombineSignatureError>
     where
         I: IntoIterator<Item = (T, &'a PartialSignature)>,
         T: IntoFr,

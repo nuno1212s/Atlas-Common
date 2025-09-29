@@ -171,7 +171,7 @@ impl DistributedKeyGenerator {
     }
 
     /// Handle the protocol having been finished and return the public key set and the private key share
-    pub fn finalize(self) -> Result<(PublicKeySet, PrivateKeyPart)> {
+    pub(super) fn finalize(self) -> Result<(PublicKeySet, PrivateKeyPart)> {
         let mut pk = Poly::zero().commitment();
 
         let mut sk = Fr::zero();
