@@ -27,7 +27,7 @@ jobs:
           cargo fmt --version
           cargo clippy --version
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets --no-deps -- -D warnings
+      - run: cargo clippy --all-targets --no-deps -- -D warnings
 
   unit-tests:
     timeout-minutes: 5
