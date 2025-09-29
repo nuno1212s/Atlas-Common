@@ -13,11 +13,11 @@ use ring::signature::Ed25519KeyPair;
 use ring::{signature as rsig, signature::KeyPair as RKeyPair, signature::ED25519_PUBLIC_KEY_LEN};
 
 pub struct KeyPair {
-    sk: rsig::Ed25519KeyPair,
+    sk: Ed25519KeyPair,
     pk: PublicKey,
 }
 
-type RPubKey = <rsig::Ed25519KeyPair as RKeyPair>::PublicKey;
+type RPubKey = <Ed25519KeyPair as RKeyPair>::PublicKey;
 
 #[derive(Copy, Clone)]
 pub struct PublicKey {
@@ -33,9 +33,9 @@ pub struct Signature(
 
 impl KeyPair {
     pub fn generate() -> Result<(Self, Vec<u8>)> {
-        let mut random = SystemRandom::new();
-        let sk = rsig::Ed25519KeyPair::generate_pkcs8(&mut random)
-            .map_err(|e| SignError::GenerateKey(format!("{:?}", e)))?;
+        let random = SystemRandom::new();
+        let sk = Ed25519KeyPair::generate_pkcs8(&random)
+            .map_err(|e| SignError::GenerateKey(format!("{e:?}")))?;
 
         Self::from_pkcs8(sk.as_ref())
     }
@@ -44,7 +44,7 @@ impl KeyPair {
         let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(priv_key) {
             Ok(sk) => sk,
             Err(err) => {
-                return Err!(SignError::InvalidPK(format!("{:?}", err)));
+                return Err!(SignError::InvalidPK(format!("{err:?}")));
             }
         };
 
@@ -61,7 +61,7 @@ impl KeyPair {
         let sk = match rsig::Ed25519KeyPair::from_seed_unchecked(seed_bytes) {
             Ok(sk) => sk,
             Err(err) => {
-                return Err!(SignError::InvalidSignature(format!("{}", err)));
+                return Err!(SignError::InvalidSignature(format!("{err}")));
             }
         };
 
@@ -89,7 +89,7 @@ impl PublicKey {
         let sk = match Ed25519KeyPair::from_pkcs8_maybe_unchecked(raw_bytes) {
             Ok(sk) => sk,
             Err(err) => {
-                return Err!(SignError::InvalidPK(format!("{:?}", err)));
+                return Err!(SignError::InvalidPK(format!("{err:?}")));
             }
         };
 
@@ -130,9 +130,9 @@ impl PublicKey {
             return Err!(VerifyError::BlankSignature);
         }
 
-        self.pk.verify(message, signature.as_ref()).map_err(|e| {
-            VerifyError::VerificationError(format!("{:?}", e), signature.0.to_vec())
-        })?;
+        self.pk
+            .verify(message, signature.as_ref())
+            .map_err(|e| VerifyError::VerificationError(format!("{e:?}"), signature.0.to_vec()))?;
 
         Ok(())
     }

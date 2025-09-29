@@ -4,10 +4,7 @@ use std::pin::{pin, Pin};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-/**
- * ASYNCHRONOUS CHANNEL
- */
-
+/// ASYNCHRONOUS CHANNEL
 #[cfg(feature = "channel_flume_mpmc")]
 type InnerAsyncChannelTx<T> = super::flume_mpmc::ChannelMixedTx<T>;
 #[cfg(feature = "channel_flume_mpmc")]

@@ -37,6 +37,12 @@ impl Flag {
     }
 }
 
+impl Default for Flag {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// A `Global` represents a global variable.
 ///
 /// Checking for initialization is thread safe, but dropping or
@@ -70,6 +76,12 @@ impl<T: 'static> Global<T> {
     }
 }
 
+impl<T: 'static> Default for Global<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Sync + 'static> Global<T> {
     /// Checks for the initialization of a global variable.
     ///
@@ -86,6 +98,8 @@ impl<T: Sync + 'static> Global<T> {
         }
     }
 }
+
+
 
 /// A wrapper for non sync types to become Sync,
 /// By only providing a read access to it.

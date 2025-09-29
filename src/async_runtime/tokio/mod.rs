@@ -17,7 +17,7 @@ pub fn init(num_threads: usize) -> Result<Runtime> {
 
             let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
 
-            format!("Atlas-Async-Worker-{}", id)
+            format!("Atlas-Async-Worker-{id}")
         })
         .enable_all()
         .build()

@@ -2,8 +2,6 @@ use crate::channel::{RecvError, SendReturnError, TryRecvError, TrySendReturnErro
 use std::sync::Arc;
 use std::time::Duration;
 
-#[allow(dead_code)]
-
 /**
 Async and sync mixed channels (Allows us to connect async and sync environments together)
  */

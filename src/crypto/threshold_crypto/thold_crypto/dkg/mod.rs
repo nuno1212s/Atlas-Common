@@ -150,7 +150,7 @@ impl DistributedKeyGenerator {
             let node = row.evaluate(node);
 
             let serialized =
-                bincode::serde::encode_to_vec(&FieldWrap(node), bincode::config::standard())?;
+                bincode::serde::encode_to_vec(FieldWrap(node), bincode::config::standard())?;
 
             values.push(serialized);
         }

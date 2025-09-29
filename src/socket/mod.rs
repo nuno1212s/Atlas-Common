@@ -546,7 +546,7 @@ impl Write for SecureWriteHalfSync {
 
 pub enum SecureSocketAsync {
     Plain(AsyncSocket),
-    Tls(Compat<TlsStream<Compat<AsyncSocket>>>),
+    Tls(Box<Compat<TlsStream<Compat<AsyncSocket>>>>),
 }
 
 impl SecureSocketAsync {
@@ -555,7 +555,7 @@ impl SecureSocketAsync {
     }
 
     pub fn new_tls(socket: TlsStream<Compat<AsyncSocket>>) -> Self {
-        Self::Tls(socket.compat())
+        Self::Tls(Box::new(socket.compat()))
     }
 
     pub fn split(self) -> (SecureWriteHalfAsync, SecureReadHalfAsync) {

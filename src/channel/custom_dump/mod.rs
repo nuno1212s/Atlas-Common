@@ -19,7 +19,7 @@ type QueueType<T> = LFBQueue<T>;
 
 #[cfg(any(
     feature = "channel_custom_dump_mqueue",
-    all(not(feature = "channel_custom_dump_lfb"))
+    not(feature = "channel_custom_dump_lfb")
 ))]
 type QueueType<T> = MQueue<T>;
 
@@ -216,7 +216,7 @@ pub fn bounded_mult_channel<T>(bound: usize) -> (ChannelTx<T>, ChannelRxMult<T>)
 
         #[cfg(any(
             feature = "channel_custom_dump_mqueue",
-            all(not(feature = "channel_custom_dump_lfb"))
+            not(feature = "channel_custom_dump_lfb")
         ))]
         {
             dsrust::channels::queue_channel::bounded_mutex_backoff_queue(bound)

@@ -52,7 +52,7 @@ impl State {
 
         OsRng.fill_bytes(&mut seed);
 
-        let s = unsafe { std::mem::transmute(seed) };
+        let s = unsafe { std::mem::transmute::<[u8; 32], [u64; 4]>(seed) };
         let mut s = State { s };
 
         s.long_jump();

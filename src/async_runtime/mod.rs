@@ -51,7 +51,7 @@ pub fn init(num_threads: usize) -> Result<()> {
 
         RUNTIME
             .set(runtime)
-            .map_err(|err| anyhow::anyhow!("Failed to set Tokio runtime: {:?}", err))
+            .map_err(|err| anyhow::anyhow!("Failed to set Tokio runtime: {err:?}"))
     }
 
     #[cfg(feature = "async_runtime_async_std")]
