@@ -447,6 +447,7 @@ pub mod dkg_test {
     use std::iter;
     use std::sync::Arc;
     use std::thread::JoinHandle;
+    use anyhow::Context;
 
     const DEALERS: usize = 4;
     const FAULTY_NODES: usize = 1;
@@ -676,13 +677,11 @@ pub mod dkg_test {
     ) {
         println!("Running node {}", node.id);
 
-        //std::thread::sleep(Duration::from_millis(rand::thread_rng().gen_range(0, 100)));
-
         let result: Result<()> = txs.channels.iter().try_for_each(|tx| {
             tx.send(NodeMessage {
                 from: node.id,
                 msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
-            })
+            }).context("Failed to send dealer part")
         });
 
         result.expect("Failed to send dealer part");
@@ -701,7 +700,7 @@ pub mod dkg_test {
                                     tx.send(NodeMessage {
                                         from: node.id,
                                         msg_type: NodeMessageType::Ack(ack.clone()),
-                                    })
+                                    }).context("Failed to send ack")
                                 });
 
                                 res.expect("Failed to send ack");
