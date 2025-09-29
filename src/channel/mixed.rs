@@ -1,4 +1,4 @@
-use crate::channel::{RecvError, SendError, SendReturnError, TrySendReturnError};
+use crate::channel::{RecvError, SendError, SendReturnError, TryRecvError, TrySendReturnError};
 use crate::Err;
 use std::sync::Arc;
 use std::time::Duration;
@@ -44,23 +44,18 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn recv(&self) -> crate::error::Result<T> {
+    pub fn recv(&self) -> Result<T, RecvError> {
         match self.inner.recv_sync() {
             Ok(res) => Ok(res),
             Err(_err) => {
-                Err!(RecvError::ChannelDc)
+                Err(RecvError::ChannelDc)
             }
         }
     }
 
     #[inline]
-    pub fn recv_timeout(&self, timeout: Duration) -> crate::error::Result<T> {
-        match self.inner.recv_timeout(timeout) {
-            Ok(result) => Ok(result),
-            Err(_err) => {
-                Err!(RecvError::ChannelDc)
-            }
-        }
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, TryRecvError> {
+        self.inner.recv_timeout(timeout)
     }
 
     #[inline]
@@ -69,7 +64,7 @@ impl<T> ChannelMixedRx<T> {
     }
 
     #[inline]
-    pub fn try_recv(&self) -> crate::error::Result<T> {
+    pub fn try_recv(&self) -> Result<T, TryRecvError> {
         self.inner.try_recv()
     }
 }

@@ -70,6 +70,16 @@ pub enum TrySendReturnError<T> {
     Full(T),
 }
 
+impl<T> From<TrySendReturnError<T>> for TrySendError {
+    fn from(value: TrySendReturnError<T>) -> Self {
+        match value {
+            TrySendReturnError::Disconnected(_) => TrySendError::Disconnected,
+            TrySendReturnError::Timeout(_) => TrySendError::Timeout,
+            TrySendReturnError::Full(_) => TrySendError::Full,
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum SendError {
     #[error("Failed to send message")]
@@ -92,6 +102,14 @@ pub enum SendReturnError<T> {
     FailedToSend(T),
 }
 
+impl<T> From<SendReturnError<T>> for SendError {
+    fn from(value: SendReturnError<T>) -> Self {
+        match value {
+            SendReturnError::FailedToSend(_) => SendError::FailedToSend,
+        }
+    }
+}
+
 unsafe impl<T> Send for SendReturnError<T> {}
 
 unsafe impl<T> Sync for SendReturnError<T> {}
@@ -109,23 +127,5 @@ impl<T> Debug for SendReturnError<T> {
 impl<T> Debug for TrySendReturnError<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Failed to send message")
-    }
-}
-
-impl<T> From<SendReturnError<T>> for SendError {
-    fn from(value: SendReturnError<T>) -> Self {
-        match value {
-            SendReturnError::FailedToSend(_) => SendError::FailedToSend,
-        }
-    }
-}
-
-impl<T> From<TrySendReturnError<T>> for TrySendError {
-    fn from(value: TrySendReturnError<T>) -> Self {
-        match value {
-            TrySendReturnError::Disconnected(_) => TrySendError::Disconnected,
-            TrySendReturnError::Timeout(_) => TrySendError::Timeout,
-            TrySendReturnError::Full(_) => TrySendError::Full,
-        }
     }
 }

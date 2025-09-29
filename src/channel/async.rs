@@ -1,5 +1,4 @@
-use crate::channel::{SendError, SendReturnError};
-use futures::future::FusedFuture;
+use crate::channel::{RecvError, SendError};
 use std::future::Future;
 use std::pin::{pin, Pin};
 use std::sync::Arc;
@@ -100,10 +99,10 @@ impl<T> ChannelAsyncRx<T> {
 }
 
 impl<'a, T> Future for ChannelRxFut<'a, T> {
-    type Output = crate::error::Result<T>;
+    type Output = Result<T, RecvError>;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<crate::error::Result<T>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, RecvError>> {
         pin!(&mut self.inner).poll(cx)
     }
 }

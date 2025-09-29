@@ -1,4 +1,3 @@
-use crate::error::*;
 use crate::socket::{MioListener, MioSocket};
 
 use std::io;
@@ -14,13 +13,13 @@ pub struct Listener {
     inner: TcpListener,
 }
 
-pub fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
+pub fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener, io::Error> {
     let listener = TcpListener::bind(addr.into()).map(Listener::new)?;
 
     Ok(listener)
 }
 
-pub fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
+pub fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket, io::Error> {
     let socket = TcpStream::connect(addr.into()).map(Socket::new)?;
 
     Ok(socket)
@@ -31,7 +30,7 @@ impl Listener {
         Listener { inner }
     }
 
-    pub fn accept(&self) -> Result<Socket> {
+    pub fn accept(&self) -> Result<Socket, io::Error> {
         let socket = self.inner.accept().map(|(s, _)| Socket::new(s))?;
 
         Ok(socket)
@@ -44,7 +43,7 @@ impl Socket {
     }
 }
 impl Deref for Socket {
-    type Target = std::net::TcpStream;
+    type Target = TcpStream;
 
     fn deref(&self) -> &Self::Target {
         &self.inner

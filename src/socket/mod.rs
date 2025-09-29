@@ -25,8 +25,6 @@ use tokio_util::compat::{
     Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
 };
 
-use crate::error::*;
-
 #[cfg(feature = "socket_tokio_tcp")]
 mod tokio_tcp;
 
@@ -194,7 +192,7 @@ impl DerefMut for MioSocket {
 ///
 /// Safe when ever using all TCP streams except RIO.
 /// When using rio, this can only be called once
-pub unsafe fn init() -> Result<()> {
+pub unsafe fn init() -> Result<(), io::Error> {
     #[cfg(feature = "socket_rio_tcp")]
     {
         rio_tcp::init()?;
@@ -210,7 +208,7 @@ pub unsafe fn init() -> Result<()> {
 /// Safe when ever using all TCP streams except RIO.
 /// When using rio, this can only be called once and after the [init]
 /// function
-pub unsafe fn drop() -> Result<()> {
+pub unsafe fn drop() -> Result<(), io::Error> {
     #[cfg(feature = "socket_rio_tcp")]
     {
         rio_tcp::drop()?;
@@ -220,7 +218,7 @@ pub unsafe fn drop() -> Result<()> {
 }
 
 /// Creates a new `Listener` socket, bound to the address `addr`.
-pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncListener> {
+pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncListener, io::Error> {
     {
         #[cfg(feature = "socket_tokio_tcp")]
         {
@@ -238,17 +236,15 @@ pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncList
         }
     }
     .and_then(|inner| set_listener_options(AsyncListener { inner }))
-    .context("Failed to bind async server")
 }
 
-pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener> {
+pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener, io::Error> {
     { std_tcp::bind(addr) }
         .and_then(|inner| set_listener_options_replica(SyncListener { inner }))
-        .context("Failed to bind sync server")
 }
 
 /// Connects to the remote node pointed to by the address `addr`.
-pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> Result<AsyncSocket> {
+pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> Result<AsyncSocket, io::Error> {
     {
         #[cfg(feature = "socket_tokio_tcp")]
         {
@@ -268,12 +264,12 @@ pub async fn connect_async<A: Into<SocketAddr>>(addr: A) -> Result<AsyncSocket> 
     .and_then(|inner| set_sockstream_options(AsyncSocket { inner }))
 }
 
-pub fn connect_sync<A: Into<SocketAddr>>(addr: A) -> Result<SyncSocket> {
+pub fn connect_sync<A: Into<SocketAddr>>(addr: A) -> Result<SyncSocket, io::Error> {
     { std_tcp::connect(addr) }.and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
 }
 
 impl AsyncListener {
-    pub async fn accept(&self) -> Result<AsyncSocket> {
+    pub async fn accept(&self) -> Result<AsyncSocket, io::Error> {
         self.inner
             .accept()
             .await
@@ -282,7 +278,7 @@ impl AsyncListener {
 }
 
 impl SyncListener {
-    pub fn accept(&self) -> Result<SyncSocket> {
+    pub fn accept(&self) -> Result<SyncSocket, io::Error> {
         self.inner
             .accept()
             .and_then(|inner| set_sockstream_options_sync(SyncSocket { inner }))
@@ -811,7 +807,7 @@ impl AsyncWrite for SecureSocketAsync {
 
 // set listener socket options; translated from BFT-SMaRt
 #[inline]
-fn set_listener_options(listener: AsyncListener) -> Result<AsyncListener> {
+fn set_listener_options(listener: AsyncListener) -> Result<AsyncListener, io::Error> {
     let raw_fd = listener.inner.as_raw_fd();
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };
 
@@ -829,7 +825,7 @@ fn set_listener_options(listener: AsyncListener) -> Result<AsyncListener> {
 
 // set listener socket options; translated from BFT-SMaRt
 #[inline]
-fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> {
+fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener, io::Error> {
     let raw_fd = listener.inner.as_raw_fd();
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };
 
@@ -848,7 +844,7 @@ fn set_listener_options_replica(listener: SyncListener) -> Result<SyncListener> 
 
 // set connection socket options; translated from BFT-SMaRt
 #[inline]
-fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket> {
+fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket, io::Error> {
     let raw_fd = connection.inner.as_raw_fd();
 
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };
@@ -865,7 +861,7 @@ fn set_sockstream_options(connection: AsyncSocket) -> Result<AsyncSocket> {
 }
 
 #[inline]
-fn set_sockstream_options_sync(connection: SyncSocket) -> Result<SyncSocket> {
+fn set_sockstream_options_sync(connection: SyncSocket) -> Result<SyncSocket, io::Error> {
     let raw_fd = connection.inner.as_raw_fd();
 
     let sock = unsafe { Socket::from_raw_fd(raw_fd) };

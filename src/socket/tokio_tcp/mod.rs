@@ -6,7 +6,6 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use crate::error::*;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
@@ -19,13 +18,13 @@ pub struct Listener {
     inner: TcpListener,
 }
 
-pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener> {
+pub async fn bind<A: Into<SocketAddr>>(addr: A) -> Result<Listener, io::Error> {
     let listener = TcpListener::bind(addr.into()).await.map(Listener::new)?;
 
     Ok(listener)
 }
 
-pub async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket> {
+pub async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Socket, io::Error> {
     let socket = TcpStream::connect(addr.into())
         .await
         .map(|s| Socket::new(s.compat()))?;
@@ -38,7 +37,7 @@ impl Listener {
         Listener { inner }
     }
 
-    pub async fn accept(&self) -> Result<Socket> {
+    pub async fn accept(&self) -> Result<Socket, io::Error> {
         let socket = self
             .inner
             .accept()

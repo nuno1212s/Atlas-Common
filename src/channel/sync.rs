@@ -1,4 +1,4 @@
-use crate::channel::{SendReturnError, TrySendError};
+use crate::channel::{RecvError, SendError, SendReturnError, TrySendError};
 use crate::channel::{TryRecvError, TrySendReturnError};
 use std::sync::Arc;
 use std::time::Duration;
@@ -51,7 +51,7 @@ impl<T> ChannelSyncRx<T> {
     }
 
     #[inline]
-    pub fn recv(&self) -> crate::error::Result<T> {
+    pub fn recv(&self) -> Result<T, RecvError> {
         self.inner.recv()
     }
 
@@ -73,18 +73,18 @@ impl<T> ChannelSyncTx<T> {
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> crate::error::Result<()> {
-        Ok(self.inner.send(value)?)
+    pub fn send(&self, value: T) -> Result<(), SendError> {
+        self.inner.send(value)
     }
 
     #[inline]
-    pub fn send_timeout(&self, value: T, timeout: Duration) -> crate::error::Result<()> {
-        Ok(self.inner.send_timeout(value, timeout)?)
+    pub fn send_timeout(&self, value: T, timeout: Duration) -> Result<(), TrySendError> {
+        self.inner.send_timeout(value, timeout)
     }
 
     #[inline]
-    pub fn try_send(&self, value: T) -> crate::error::Result<()> {
-        Ok(self.inner.try_send(value)?)
+    pub fn try_send(&self, value: T) -> Result<(), TrySendError> {
+        self.inner.try_send(value)
     }
 }
 

@@ -1,7 +1,6 @@
 use crate::channel::{
     RecvError, SendError, SendReturnError, TryRecvError, TrySendError, TrySendReturnError,
 };
-use crate::error::*;
 use crate::Err;
 use crossbeam_channel::{Receiver, RecvTimeoutError, SendTimeoutError, Sender};
 use std::ops::Deref;
@@ -120,13 +119,9 @@ impl<T> ChannelSyncRx<T> {
     }
 
     #[inline]
-    pub fn recv(&self) -> Result<T> {
-        match self.inner.recv() {
-            Ok(res) => Ok(res),
-            Err(_err) => {
-                Err!(RecvError::ChannelDc)
-            }
-        }
+    pub fn recv(&self) -> Result<T, RecvError> {
+        self.inner.recv()
+            .map_err(|_| RecvError::ChannelDc)
     }
 
     #[inline]
