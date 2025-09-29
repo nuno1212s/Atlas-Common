@@ -17,15 +17,9 @@ use futures::future::FusedFuture;
 #[cfg(feature = "channel_custom_dump_lfb")]
 type QueueType<T> = LFBQueue<T>;
 
-#[cfg(feature = "channel_custom_dump_lfrb")]
-type QueueType<T> = LFBRArrayQueue<T>;
-
 #[cfg(any(
     feature = "channel_custom_dump_mqueue",
-    all(
-        not(feature = "channel_custom_dump_lfrb"),
-        not(feature = "channel_custom_dump_lfb")
-    )
+    not(feature = "channel_custom_dump_lfb")
 ))]
 type QueueType<T> = MQueue<T>;
 
@@ -220,17 +214,9 @@ pub fn bounded_mult_channel<T>(bound: usize) -> (ChannelTx<T>, ChannelRxMult<T>)
             dsrust::channels::queue_channel::bounded_lf_queue(bound)
         }
 
-        #[cfg(feature = "channel_custom_dump_lfrb")]
-        {
-            dsrust::channels::queue_channel::bounded_lf_room_queue(bound)
-        }
-
         #[cfg(any(
             feature = "channel_custom_dump_mqueue",
-            all(
-                not(feature = "channel_custom_dump_lfrb"),
-                not(feature = "channel_custom_dump_lfb")
-            )
+            not(feature = "channel_custom_dump_lfb")
         ))]
         {
             dsrust::channels::queue_channel::bounded_mutex_backoff_queue(bound)

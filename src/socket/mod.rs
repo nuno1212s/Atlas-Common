@@ -1,6 +1,5 @@
 //! Abstractions over different socket types of crates in the Rust ecosystem.
 
-use anyhow::Context;
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 use std::net::SocketAddr;
@@ -19,7 +18,7 @@ use mio::{Interest, Registry, Token};
 use tracing::error;
 
 use rustls::{ClientConnection, ServerConnection};
-use socket2::{SockRef, Socket};
+use socket2::Socket;
 use tokio_rustls::TlsStream;
 use tokio_util::compat::{
     Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt,
@@ -239,8 +238,7 @@ pub async fn bind_async_server<A: Into<SocketAddr>>(addr: A) -> Result<AsyncList
 }
 
 pub fn bind_sync_server<A: Into<SocketAddr>>(addr: A) -> Result<SyncListener, io::Error> {
-    { std_tcp::bind(addr) }
-        .and_then(|inner| set_listener_options_replica(SyncListener { inner }))
+    { std_tcp::bind(addr) }.and_then(|inner| set_listener_options_replica(SyncListener { inner }))
 }
 
 /// Connects to the remote node pointed to by the address `addr`.
@@ -548,7 +546,7 @@ impl Write for SecureWriteHalfSync {
 
 pub enum SecureSocketAsync {
     Plain(AsyncSocket),
-    Tls(Compat<TlsStream<Compat<AsyncSocket>>>),
+    Tls(Box<Compat<TlsStream<Compat<AsyncSocket>>>>),
 }
 
 impl SecureSocketAsync {
@@ -557,7 +555,7 @@ impl SecureSocketAsync {
     }
 
     pub fn new_tls(socket: TlsStream<Compat<AsyncSocket>>) -> Self {
-        Self::Tls(socket.compat())
+        Self::Tls(Box::new(socket.compat()))
     }
 
     pub fn split(self) -> (SecureWriteHalfAsync, SecureReadHalfAsync) {
@@ -658,7 +656,7 @@ pub enum WriteHalf {
 pub struct WriteHalfAsync {
     #[cfg(feature = "socket_tokio_tcp")]
     inner: BufWriter<tokio_tcp::WriteHalf>,
-    #[cfg(feature = "socket_async_tcp")]
+    #[cfg(feature = "socket_async_std_tcp")]
     inner: BufWriter<async_std_tcp::WriteHalf>,
 }
 
@@ -674,7 +672,7 @@ pub enum ReadHalf {
 pub struct ReadHalfAsync {
     #[cfg(feature = "socket_tokio_tcp")]
     inner: BufReader<tokio_tcp::ReadHalf>,
-    #[cfg(feature = "socket_async_tcp")]
+    #[cfg(feature = "socket_async_std_tcp")]
     inner: BufReader<async_std_tcp::ReadHalf>,
 }
 

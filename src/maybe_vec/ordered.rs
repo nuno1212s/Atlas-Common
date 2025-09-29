@@ -63,7 +63,7 @@ impl<T> MaybeOrderedVec<T> {
         }
     }
 
-    pub fn iter(&self) -> ItRefOrderedMaybeVec<T> {
+    pub fn iter(&'_ self) -> ItRefOrderedMaybeVec<'_, T> {
         match self {
             MaybeOrderedVec::One(one) => ItRefOrderedMaybeVec::One(iter::once(one)),
             MaybeOrderedVec::Mult(vec) => ItRefOrderedMaybeVec::Mult(vec.iter()),

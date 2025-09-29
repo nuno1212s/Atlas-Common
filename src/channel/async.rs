@@ -4,20 +4,11 @@ use std::pin::{pin, Pin};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-/**
- * ASYNCHRONOUS CHANNEL
- */
-
+/// ASYNCHRONOUS CHANNEL
 #[cfg(feature = "channel_flume_mpmc")]
 type InnerAsyncChannelTx<T> = super::flume_mpmc::ChannelMixedTx<T>;
 #[cfg(feature = "channel_flume_mpmc")]
 type InnerAsyncChannelRx<T> = super::flume_mpmc::ChannelMixedRx<T>;
-
-#[cfg(feature = "channel_async_kanal")]
-type InnerAsyncChannelTx<T> = crate::channel::kanal::r#async::ChannelMixedTx<T>;
-
-#[cfg(feature = "channel_async_kanal")]
-type InnerAsyncChannelRx<T> = crate::channel::kanal::r#async::ChannelMixedRx<T>;
 
 /// General purpose channel's sending half.
 pub struct ChannelAsyncTx<T> {
@@ -37,9 +28,6 @@ type InnerChannelRxFut<'a, T> = super::flume_mpmc::ChannelRxFut<'a, T>;
 #[cfg(feature = "channel_async_channel_mpmc")]
 type InnerChannelRxFut<'a, T> = crate::channel::async_channel_mpmc::ChannelRxFut<'a, T>;
 
-#[cfg(feature = "channel_async_kanal")]
-type InnerChannelRxFut<'a, T> = crate::channel::kanal::r#async::ChannelRxFut<'a, T>;
-
 /// Future for a general purpose channel's receiving operation.
 pub struct ChannelRxFut<'a, T> {
     pub(crate) inner: InnerChannelRxFut<'a, T>,
@@ -50,9 +38,6 @@ type InnerChannelTxFut<'a, T> = super::flume_mpmc::ChannelTxFut<'a, T>;
 
 #[cfg(feature = "channel_async_channel_mpmc")]
 type InnerChannelTxFut<'a, T> = crate::channel::async_channel_mpmc::ChannelTxFut<'a, T>;
-
-#[cfg(feature = "channel_async_kanal")]
-type InnerChannelTxFut<'a, T> = crate::channel::kanal::r#async::ChannelTxFut<'a, T>;
 
 pub struct ChannelTxFut<'a, T> {
     pub(crate) inner: InnerChannelTxFut<'a, T>,
@@ -132,10 +117,6 @@ pub fn new_bounded_async<T>(
         #[cfg(feature = "channel_flume_mpmc")]
         {
             super::flume_mpmc::new_bounded(bound)
-        }
-        #[cfg(feature = "channel_mixed_kanal")]
-        {
-            super::kanal::r#async::new_bounded(bound)
         }
         #[cfg(feature = "channel_async_channel_mpmc")]
         {

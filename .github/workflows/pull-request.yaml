@@ -1,6 +1,12 @@
 name: pull request
 on:
   pull_request:
+  push:
+    # Sequence of patterns matched against refs/heads
+    branches:
+      - 'main'
+      - 'research/**'
+      - 'releases/**'
 
 jobs:
   lint:
@@ -12,7 +18,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2025-06-09
           components: rustfmt, clippy
       - run: |
           rustup --version
@@ -21,7 +27,7 @@ jobs:
           cargo fmt --version
           cargo clippy --version
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - run: cargo clippy --all-targets --no-deps -- -D warnings
 
   unit-tests:
     timeout-minutes: 5

@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::fmt::Debug;
 use tracing::warn;
 
@@ -61,6 +60,7 @@ impl CircuitBreaker {
         }
     }
 
+    #[allow(dead_code)]
     fn reset(&mut self) {
         self.current_failures_in_row = 0;
     }

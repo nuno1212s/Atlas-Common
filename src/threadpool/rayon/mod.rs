@@ -37,7 +37,7 @@ impl Builder {
     pub fn build(self) -> ThreadPool {
         let mut builder = ThreadPoolBuilder::new();
 
-        builder = builder.thread_name(|t| format!("Atlas-CPU-Worker-{}", t));
+        builder = builder.thread_name(|t| format!("Atlas-CPU-Worker-{t}"));
 
         let inner = match self.threads {
             Some(n) => builder.num_threads(n),

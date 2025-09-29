@@ -16,13 +16,6 @@ mod custom_dump;
 #[cfg(feature = "channel_sync_crossbeam")]
 mod crossbeam;
 
-#[cfg(any(
-    feature = "channel_sync_kanal",
-    feature = "channel_mixed_kanal",
-    feature = "channel_async_kanal"
-))]
-mod kanal;
-
 mod oneshot_spsc;
 
 pub mod r#async;

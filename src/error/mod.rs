@@ -11,7 +11,6 @@ macro_rules! Err {
     }};
 }
 
-///
 #[macro_export]
 macro_rules! quiet_unwrap {
     ($err:expr) => {

@@ -57,6 +57,7 @@ impl CryptoInfoMockFactory {
     }
 }
 
+#[allow(dead_code)]
 struct CryptoInfoMock {
     id: NodeId,
     private_key_part: PrivateKeyPart,
@@ -65,6 +66,7 @@ struct CryptoInfoMock {
     node_list: Vec<NodeId>,
 }
 
+#[allow(dead_code)]
 impl CryptoInfoMock {
     fn get_own_private_key(&self) -> &PrivateKeyPart {
         &self.private_key_part

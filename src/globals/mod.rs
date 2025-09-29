@@ -37,6 +37,12 @@ impl Flag {
     }
 }
 
+impl Default for Flag {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// A `Global` represents a global variable.
 ///
 /// Checking for initialization is thread safe, but dropping or
@@ -67,6 +73,12 @@ impl<T: 'static> Global<T> {
     pub fn drop(&'static mut self) -> Option<T> {
         self.flag.unset();
         self.value.take()
+    }
+}
+
+impl<T: 'static> Default for Global<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

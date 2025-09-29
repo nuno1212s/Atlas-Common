@@ -12,12 +12,6 @@ type InnerSyncChannelRx<T> = super::crossbeam::ChannelSyncRx<T>;
 #[cfg(feature = "channel_sync_crossbeam")]
 type InnerSyncChannelTx<T> = super::crossbeam::ChannelSyncTx<T>;
 
-#[cfg(feature = "channel_sync_kanal")]
-type InnerSyncChannelRx<T> = crate::channel::kanal::ChannelSyncRx<T>;
-
-#[cfg(feature = "channel_sync_kanal")]
-type InnerSyncChannelTx<T> = crate::channel::kanal::ChannelSyncTx<T>;
-
 #[cfg(feature = "channel_sync_flume")]
 type InnerSyncChannelRx<T> = flume_mpmc::ChannelMixedRx<T>;
 
@@ -88,7 +82,6 @@ impl<T> ChannelSyncTx<T> {
     }
 }
 
-#[cfg(not(feature = "channel_sync_kanal"))]
 impl<T> ChannelSyncTx<T> {
     #[inline]
     pub fn send_return(&self, value: T) -> Result<(), SendReturnError<T>> {
@@ -118,17 +111,6 @@ impl<T> ChannelSyncTx<T> {
         self.inner.send_return(value)
     }
 
-    #[inline]
-    pub fn try_send_return(&self, value: T) -> Result<(), TrySendReturnError<T>> {
-        self.inner.try_send_return(value)
-    }
-}
-
-#[cfg(feature = "channel_sync_kanal")]
-impl<T> ChannelSyncTx<T>
-where
-    T: Clone,
-{
     #[inline]
     pub fn try_send_return(&self, value: T) -> Result<(), TrySendReturnError<T>> {
         self.inner.try_send_return(value)
@@ -165,10 +147,6 @@ pub fn new_bounded_sync<T>(
         {
             super::crossbeam::new_bounded(bound)
         }
-        #[cfg(feature = "channel_sync_kanal")]
-        {
-            super::kanal::new_bounded(bound)
-        }
         #[cfg(feature = "channel_sync_flume")]
         {
             super::flume_mpmc::new_bounded(bound)
@@ -194,10 +172,6 @@ pub fn new_unbounded_sync<T>(
         #[cfg(feature = "channel_sync_crossbeam")]
         {
             super::crossbeam::new_unbounded()
-        }
-        #[cfg(feature = "channel_sync_kanal")]
-        {
-            super::kanal::new_unbounded()
         }
         #[cfg(feature = "channel_sync_flume")]
         {

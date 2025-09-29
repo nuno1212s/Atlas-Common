@@ -49,18 +49,18 @@ pub fn init(num_threads: usize) -> Result<()> {
     {
         let runtime = tokio::init(num_threads)?;
 
-        RUNTIME.set(runtime).map_err(|err| {
-            anyhow::anyhow!("Failed to set Tokio runtime: {:?}", err)
-        })
+        RUNTIME
+            .set(runtime)
+            .map_err(|err| anyhow::anyhow!("Failed to set Tokio runtime: {err:?}"))
     }
 
     #[cfg(feature = "async_runtime_async_std")]
     {
         let runtime = async_std::init(num_threads);
 
-        RUNTIME.set(runtime).map_err(|err| {
-            anyhow::anyhow!("Failed to set Async Runtime runtime: {:?}", err)
-        })
+        RUNTIME
+            .set(runtime)
+            .map_err(|err| anyhow::anyhow!("Failed to set Async Runtime runtime: {:?}", err))
     }
 }
 

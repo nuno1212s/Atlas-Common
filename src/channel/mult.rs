@@ -1,9 +1,6 @@
 use crate::channel::{custom_dump, SendReturnError};
 
-/**
-Channel with capability of dumping multiple members in a couple of CAS operations
- */
-
+/// Channel with capability of dumping multiple members in a couple of CAS operations
 pub struct ChannelMultTx<T> {
     #[cfg(feature = "channel_mult_custom_dump")]
     inner: custom_dump::ChannelTx<T>,
@@ -30,12 +27,12 @@ impl<T> ChannelMultTx<T> {
     }
 
     #[inline]
-    pub async fn send_async(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
+    pub async fn send_async(&self, value: T) -> Result<(), SendReturnError<T>> {
         self.inner.send(value).await
     }
 
     #[inline]
-    pub fn send(&self, value: T) -> std::result::Result<(), SendReturnError<T>> {
+    pub fn send(&self, value: T) -> Result<(), SendReturnError<T>> {
         self.inner.send_blk(value)
     }
 }

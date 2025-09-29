@@ -150,7 +150,7 @@ impl DistributedKeyGenerator {
             let node = row.evaluate(node);
 
             let serialized =
-                bincode::serde::encode_to_vec(&FieldWrap(node), bincode::config::standard())?;
+                bincode::serde::encode_to_vec(FieldWrap(node), bincode::config::standard())?;
 
             values.push(serialized);
         }
@@ -171,7 +171,7 @@ impl DistributedKeyGenerator {
     }
 
     /// Handle the protocol having been finished and return the public key set and the private key share
-    pub fn finalize(self) -> Result<(PublicKeySet, PrivateKeyPart)> {
+    pub(super) fn finalize(self) -> Result<(PublicKeySet, PrivateKeyPart)> {
         let mut pk = Poly::zero().commitment();
 
         let mut sk = Fr::zero();
@@ -444,10 +444,10 @@ pub mod dkg_test {
 
     use getset::{CopyGetters, Getters};
 
+    use anyhow::Context;
     use std::iter;
     use std::sync::Arc;
     use std::thread::JoinHandle;
-    use anyhow::Context;
 
     const DEALERS: usize = 4;
     const FAULTY_NODES: usize = 1;
@@ -616,12 +616,14 @@ pub mod dkg_test {
             .collect()
     }
 
-    fn generate_keys_for_nodes() -> Vec<(
+    type GeneratedKey = (
         PublicKeySet,
         PrivateKeyPart,
         ChannelSyncRx<NodeMessage>,
         Vec<(usize, usize)>,
-    )> {
+    );
+
+    fn generate_keys_for_nodes() -> Vec<GeneratedKey> {
         let participating_nodes = (1..=NODES)
             .map(|node_id| {
                 let (tx, rx) = channel::sync::new_bounded_sync(QUEUE_SIZE, None::<&str>);
@@ -681,7 +683,8 @@ pub mod dkg_test {
             tx.send(NodeMessage {
                 from: node.id,
                 msg_type: NodeMessageType::DealerPart(dealer_part.clone()),
-            }).context("Failed to send dealer part")
+            })
+            .context("Failed to send dealer part")
         });
 
         result.expect("Failed to send dealer part");
@@ -689,7 +692,7 @@ pub mod dkg_test {
         let mut ack_reception_order = Vec::new();
 
         loop {
-            for x in node.rx_channel.recv() {
+            if let Ok(x) = node.rx_channel.recv() {
                 let sender_id = x.from;
 
                 match x.msg_type {
@@ -700,7 +703,8 @@ pub mod dkg_test {
                                     tx.send(NodeMessage {
                                         from: node.id,
                                         msg_type: NodeMessageType::Ack(ack.clone()),
-                                    }).context("Failed to send ack")
+                                    })
+                                    .context("Failed to send ack")
                                 });
 
                                 res.expect("Failed to send ack");
@@ -747,8 +751,8 @@ pub mod dkg_test {
 
                     let (pk, sk) = dkg.finalize().unwrap();
 
-                    eprintln!("Client {} has finished the DKG protocol", id);
-                    eprintln!("Public key: {:?}", pk);
+                    eprintln!("Client {id} has finished the DKG protocol");
+                    eprintln!("Public key: {pk:?}");
                     eprintln!("Private key share: {:?}", sk.key.reveal());
 
                     return (pk, sk, rx_channel, ack_reception_order);

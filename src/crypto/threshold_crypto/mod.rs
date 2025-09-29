@@ -63,6 +63,7 @@ pub struct CombinedSignature {
 
 impl PublicKey {}
 
+#[allow(dead_code)]
 impl PublicKeySet {
     pub fn public_key(&self) -> PublicKey {
         PublicKey {
@@ -80,6 +81,15 @@ impl PublicKeySet {
         self.key.verify_combined_signature(msg, &sig.sig)?;
 
         Ok(())
+    }
+
+    pub fn verify_partial_signature(
+        &self,
+        id: usize,
+        msg: &[u8],
+        sig: &PartialSignature,
+    ) -> Result<(), VerifySignatureError> {
+        self.key.verify_partial_signature(id, msg, &sig.sig)
     }
 
     pub fn combine_signatures<'a, T, I>(

@@ -3,7 +3,8 @@ use atlas_common::crypto::threshold_crypto::{
     PrivateKeyPart, PrivateKeySet, PublicKeyPart, PublicKeySet,
 };
 use atlas_common::node_id::NodeId;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 
 struct CryptoInfoMockFactory {
     nodes: Vec<NodeId>,
@@ -58,6 +59,7 @@ impl CryptoInfoMockFactory {
     }
 }
 
+#[allow(dead_code)]
 struct CryptoInfoMock {
     id: NodeId,
     private_key_part: PrivateKeyPart,
@@ -66,6 +68,7 @@ struct CryptoInfoMock {
     node_list: Vec<NodeId>,
 }
 
+#[allow(dead_code)]
 impl CryptoInfoMock {
     fn get_own_private_key(&self) -> &PrivateKeyPart {
         &self.private_key_part
@@ -141,11 +144,9 @@ fn benchmark_partial_signature_validation(c: &mut Criterion) {
                     let crypto_mock_other = cryptos.get(other_node_id).unwrap();
                     let public_key_part =
                         crypto_mock_other.get_public_key_for_index(signer.0 as usize);
-                    black_box(
-                        public_key_part
-                            .verify(to_sign, signature)
-                            .expect("Failed to verify signature"),
-                    );
+
+                    black_box(public_key_part.verify(to_sign, signature))
+                        .expect("Failed to verify signature");
                 });
             });
         });
@@ -210,9 +211,9 @@ fn benchmark_combined_signature_verification(c: &mut Criterion) {
             black_box(
                 info_mock
                     .get_public_key_set()
-                    .verify(to_sign, &combined_signature)
-                    .expect("Failed to verify combined signature"),
-            );
+                    .verify(to_sign, &combined_signature),
+            )
+            .expect("Failed to verify combined signature");
         });
     });
 }
