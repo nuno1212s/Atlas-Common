@@ -690,7 +690,7 @@ pub mod dkg_test {
         let mut ack_reception_order = Vec::new();
 
         loop {
-            for x in node.rx_channel.recv() {
+            if let Ok(x) = node.rx_channel.recv() {
                 let sender_id = x.from;
 
                 match x.msg_type {
