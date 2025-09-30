@@ -8,6 +8,10 @@ on:
       - 'research/**'
       - 'releases/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     timeout-minutes: 60
