@@ -42,12 +42,12 @@ pub mod node_id;
 pub mod ordering;
 pub mod peer_addr;
 pub mod persistentdb;
+pub mod phantom;
 pub mod prng;
 pub mod serialization_helper;
 pub mod socket;
 pub mod system_params;
 pub mod threadpool;
-pub mod phantom;
 
 static INITIALIZED: Flag = Flag::new();
 
