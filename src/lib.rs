@@ -42,6 +42,7 @@ pub mod node_id;
 pub mod ordering;
 pub mod peer_addr;
 pub mod persistentdb;
+pub mod phantom;
 pub mod prng;
 pub mod serialization_helper;
 pub mod socket;
